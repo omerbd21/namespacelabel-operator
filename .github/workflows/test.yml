@@ -1,4 +1,4 @@
-name: Run tests
+name: test
 
 on:  
   push:
@@ -12,4 +12,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Echo hello
-        run: exit 1
+        run: echo hello
