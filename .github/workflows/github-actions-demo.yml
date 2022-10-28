@@ -3,6 +3,7 @@ name: Run tests
 on:  
   push:
   pull_request:
+    types: [opened, reopened]
     branches:
       - main
 
