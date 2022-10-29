@@ -19,12 +19,12 @@ package controllers
 import (
 	"context"
 
+	danaiodanaiov1alpha1 "github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	danaiodanaiov1alpha1 "github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
 )
 
 // NamespaceLabelReconciler reconciles a NamespaceLabel object
@@ -47,9 +47,25 @@ type NamespaceLabelReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	var namespaceLabel danaiodanaiov1alpha1.NamespaceLabel
+	if err := r.Get(ctx, req.NamespacedName, &namespaceLabel); err != nil {
+		log.Error(err, "unable to fetch NamespaceLabel")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	// check if label already exists in namespace
+	var namespace corev1.Namespace
+	if err := r.Get(ctx, req.NamespacedName, &namespace); err != nil {
+		log.Error(err, "unable to fetch namespace")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	// if not, add the label
+	for key, value := range namespaceLabel.Spec.Labels {
+		if val, ok := namespace.Labels[key]; !ok {
+			namespace.Labels[val] = value
+		}
+	}
 
 	return ctrl.Result{}, nil
 }
