@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	mydomainv1alpha1 "github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
+	danaiodanaiov1alpha1 "github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
 )
 
 // NamespaceLabelReconciler reconciles a NamespaceLabel object
@@ -57,6 +57,6 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 // SetupWithManager sets up the controller with the Manager.
 func (r *NamespaceLabelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&mydomainv1alpha1.NamespaceLabel{}).
+		For(&danaiodanaiov1alpha1.NamespaceLabel{}).
 		Complete(r)
 }

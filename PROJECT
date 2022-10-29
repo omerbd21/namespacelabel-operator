@@ -9,7 +9,6 @@ repo: github.com/omerbd21/namespacelabel-operator
 resources:
 - api:
     crdVersion: v1
-    namespaced: true
   controller: true
   domain: dana.io.dana.io
   kind: NamespaceLabel
