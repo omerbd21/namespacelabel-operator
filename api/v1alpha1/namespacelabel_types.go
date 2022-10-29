@@ -29,7 +29,7 @@ type NamespaceLabelSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of NamespaceLabel. Edit namespacelabel_types.go to remove/update
-	Labels map[string]string `json:"labels,omitempty"`
+	Foo string `json:"foo,omitempty"`
 }
 
 // NamespaceLabelStatus defines the observed state of NamespaceLabel
@@ -40,7 +40,6 @@ type NamespaceLabelStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Cluster
 
 // NamespaceLabel is the Schema for the namespacelabels API
 type NamespaceLabel struct {
