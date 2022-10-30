@@ -31,6 +31,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const AppLabel = "app.kubernetes.io/"
+
+func getProtectedLabels() []string {
+	return []string{"kubernetes.io/metadata.name",
+		AppLabel + "name",
+		AppLabel + "instance",
+		AppLabel + "version",
+		AppLabel + "component",
+		AppLabel + "part-of",
+		AppLabel + "managed-by",
+	}
+}
+func contains(strings []string, element string) bool {
+	for _, str := range strings {
+		if str == element {
+			return true
+		}
+	}
+	return false
+}
+
 // NamespaceLabelReconciler reconciles a NamespaceLabel object
 type NamespaceLabelReconciler struct {
 	client.Client
@@ -72,7 +93,11 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 	// if not, add the label
 	labels := namespace.GetLabels()
+	protectedLabels := getProtectedLabels()
 	for key, val := range namespaceLabel.Spec.Labels {
+		if contains(protectedLabels, key) {
+			continue
+		}
 		labels[key] = val
 	}
 	namespace.SetLabels(labels)
@@ -98,8 +123,7 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				// so that it can be retried
 				return ctrl.Result{}, err
 			}*/
-			for key, val := range namespaceLabel.Spec.Labels {
-				fmt.Println(key, val)
+			for key := range namespaceLabel.Spec.Labels {
 				delete(labels, key)
 			}
 			namespace.SetLabels(labels)
