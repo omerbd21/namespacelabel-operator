@@ -13,7 +13,7 @@ spec:
     listKind: NamespaceLabelList
     plural: namespacelabels
     singular: namespacelabel
-  scope: Cluster
+  scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
