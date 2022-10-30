@@ -1,0 +1,48 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+  name: namespacelabel-operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: NamespaceLabel is the Schema for the namespacelabels API
+      displayName: Namespace Label
+      kind: NamespaceLabel
+      name: namespacelabels.dana.io.dana.io
+      version: v1alpha1
+  description: namespace-label-test
+  displayName: namespace-label
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - namesapce
+  - label
+  links:
+  - name: Namespacelabel Operator
+    url: https://namespacelabel-operator.domain
+  maintainers:
+  - email: omerbendavid21@gmail.com
+    name: omer ben david
+  maturity: alpha
+  provider:
+    name: omer ben david
+  version: 0.0.0
