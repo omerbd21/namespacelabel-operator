@@ -18,12 +18,15 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	danaiodanaiov1alpha1 "github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -49,25 +52,79 @@ type NamespaceLabelReconciler struct {
 func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
+	clientSet := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
+
 	var namespaceLabel danaiodanaiov1alpha1.NamespaceLabel
 	if err := r.Get(ctx, req.NamespacedName, &namespaceLabel); err != nil {
 		log.Error(err, "unable to fetch NamespaceLabel")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	// check if label already exists in namespace
-	var namespace corev1.Namespace
-	if err := r.Get(ctx, req.NamespacedName, &namespace); err != nil {
+	fmt.Println(namespaceLabel.Namespace)
+	namespace, err := clientSet.CoreV1().Namespaces().Get(ctx, "benda", v1.GetOptions{})
+	fmt.Println(err)
+	/*if err != nil {
+		fmt.Println(req.NamespacedName, namespace.GetName())
 		log.Error(err, "unable to fetch namespace")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
+
+	}*/
 	// if not, add the label
-	for key, value := range namespaceLabel.Spec.Labels {
-		if val, ok := namespace.Labels[key]; !ok {
-			namespace.Labels[val] = value
+	labels := namespace.GetLabels()
+	for key, val := range namespaceLabel.Spec.Labels {
+		fmt.Println(key, val)
+		labels[key] = val
+		/*if _, ok := labels[key]; !ok {
+			labels[key] = val
+			fmt.Println(labels[key])
+		}*/
+	}
+	namespace.SetLabels(labels)
+	clientSet.CoreV1().Namespaces().Update(ctx, namespace, v1.UpdateOptions{})
+
+	myFinalizerName := "dana.io.dana.io/finalizer"
+	if namespaceLabel.ObjectMeta.DeletionTimestamp.IsZero() {
+		// The object is not being deleted, so if it does not have our finalizer,
+		// then lets add the finalizer and update the object. This is equivalent
+		// registering our finalizer.
+		if !controllerutil.ContainsFinalizer(&namespaceLabel, myFinalizerName) {
+			controllerutil.AddFinalizer(&namespaceLabel, myFinalizerName)
+			if err := r.Update(ctx, &namespaceLabel); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		// The object is being deleted
+		if controllerutil.ContainsFinalizer(&namespaceLabel, myFinalizerName) {
+			// our finalizer is present, so lets handle any external dependency
+			if err := r.deleteExternalResources(ctx, &namespaceLabel); err != nil {
+				// if fail to delete the external dependency here, return with error
+				// so that it can be retried
+				return ctrl.Result{}, err
+			}
+
+			// remove our finalizer from the list and update it.
+			controllerutil.RemoveFinalizer(&namespaceLabel, myFinalizerName)
+			if err := r.Update(ctx, &namespaceLabel); err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 	}
-
 	return ctrl.Result{}, nil
+}
+
+func (r *NamespaceLabelReconciler) deleteExternalResources(ctx context.Context, namespaceLabel *danaiodanaiov1alpha1.NamespaceLabel) error {
+	clientSet := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
+	namespace, err := clientSet.CoreV1().Namespaces().Get(ctx, "benda", v1.GetOptions{})
+	fmt.Println(err)
+	labels := namespace.GetLabels()
+	for key, val := range namespaceLabel.Spec.Labels {
+		fmt.Println(key, val)
+		delete(labels, key)
+	}
+	namespace.SetLabels(labels)
+	clientSet.CoreV1().Namespaces().Update(ctx, namespace, v1.UpdateOptions{})
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
