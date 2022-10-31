@@ -18,7 +18,7 @@ package controllers
 
 import (
 	"context"
-	"fmt"
+	"reflect"
 
 	danaiodanaiov1alpha1 "github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -73,33 +73,29 @@ type NamespaceLabelReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
-
 	clientSet := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
 
 	var namespaceLabel danaiodanaiov1alpha1.NamespaceLabel
-	if err := r.Client.Get(ctx, req.NamespacedName, &namespaceLabel); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, &namespaceLabel); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("`NamedspaceLabel` deleted")
 			return ctrl.Result{}, nil
 		}
 		log.Error(err, "unable to fetch NamespaceLabel")
 		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 	}
-	// check if label already exists in namespace
 	namespace, err := clientSet.CoreV1().Namespaces().Get(ctx, namespaceLabel.Namespace, v1.GetOptions{})
 	if err != nil {
 		log.Error(err, "unable to fetch namespace")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	// if not, add the label
 	labels := namespace.GetLabels()
 	protectedLabels := getProtectedLabels()
 	for key, val := range namespaceLabel.Spec.Labels {
-		if contains(protectedLabels, key) {
-			continue
+		if !contains(protectedLabels, key) {
+			labels[key] = val
 		}
-		labels[key] = val
 	}
+
 	namespace.SetLabels(labels)
 	clientSet.CoreV1().Namespaces().Update(ctx, namespace, v1.UpdateOptions{})
 
@@ -118,16 +114,11 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		// The object is being deleted
 		if controllerutil.ContainsFinalizer(&namespaceLabel, myFinalizerName) {
 			// our finalizer is present, so lets handle any external dependency
-			/*if _, err := r.deleteExternalResources(ctx, &namespaceLabel); err != nil {
+			if _, err := r.deleteExternalResources(ctx, &namespaceLabel); err != nil {
 				// if fail to delete the external dependency here, return with error
 				// so that it can be retried
 				return ctrl.Result{}, err
-			}*/
-			for key := range namespaceLabel.Spec.Labels {
-				delete(labels, key)
 			}
-			namespace.SetLabels(labels)
-			clientSet.CoreV1().Namespaces().Update(ctx, namespace, v1.UpdateOptions{})
 
 			// remove our finalizer from the list and update it.
 			controllerutil.RemoveFinalizer(&namespaceLabel, myFinalizerName)
@@ -148,10 +139,21 @@ func (r *NamespaceLabelReconciler) deleteExternalResources(ctx context.Context, 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 
 	}
+	var namespaceLabels danaiodanaiov1alpha1.NamespaceLabelList
+	if err := r.List(ctx, &namespaceLabels); err != nil {
+		log.Error(err, "unable to fetch NamespaceLabels")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
 	labels := namespace.GetLabels()
-	for key, val := range namespaceLabel.Spec.Labels {
-		fmt.Println(key, val)
+	for key := range namespaceLabel.Spec.Labels {
 		delete(labels, key)
+		for _, nlabel := range namespaceLabels.Items {
+			if reflect.DeepEqual(nlabel.Spec.Labels, namespaceLabel.Spec.Labels) {
+				continue
+			} else if _, ok := nlabel.Spec.Labels[key]; ok {
+				labels[key] = nlabel.Spec.Labels[key]
+			}
+		}
 	}
 	namespace.SetLabels(labels)
 	clientSet.CoreV1().Namespaces().Update(ctx, namespace, v1.UpdateOptions{})
