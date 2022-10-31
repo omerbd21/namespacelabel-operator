@@ -33,6 +33,7 @@ import (
 
 const AppLabel = "app.kubernetes.io/"
 
+// getProtectedLabels returns a slice of all "protected" (system-used/application-used) labels
 func getProtectedLabels() []string {
 	return []string{"kubernetes.io/metadata.name",
 		AppLabel + "name",
@@ -43,6 +44,8 @@ func getProtectedLabels() []string {
 		AppLabel + "managed-by",
 	}
 }
+
+// contains gets a slice of strings and a string and returns whether the string is in the slice
 func contains(strings []string, element string) bool {
 	for _, str := range strings {
 		if str == element {
@@ -104,9 +107,23 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	} else {
 		if controllerutil.ContainsFinalizer(&namespaceLabel, finalizerName) {
-			if _, err := r.deleteExternalResources(ctx, &namespaceLabel); err != nil {
-				return ctrl.Result{}, err
+			var namespaceLabels danaiodanaiov1alpha1.NamespaceLabelList
+			if err := r.List(ctx, &namespaceLabels); err != nil {
+				log.Error(err, "unable to fetch NamespaceLabels")
+				return ctrl.Result{}, client.IgnoreNotFound(err)
 			}
+			for key := range namespaceLabel.Spec.Labels {
+				delete(labels, key)
+				for _, nlabel := range namespaceLabels.Items {
+					if reflect.DeepEqual(nlabel.Spec.Labels, namespaceLabel.Spec.Labels) {
+						continue
+					} else if _, ok := nlabel.Spec.Labels[key]; ok {
+						labels[key] = nlabel.Spec.Labels[key]
+					}
+				}
+			}
+			namespace.SetLabels(labels)
+			clientSet.CoreV1().Namespaces().Update(ctx, namespace, v1.UpdateOptions{})
 
 			controllerutil.RemoveFinalizer(&namespaceLabel, finalizerName)
 			if err := r.Update(ctx, &namespaceLabel); err != nil {
@@ -114,37 +131,6 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			}
 		}
 	}
-	return ctrl.Result{}, nil
-}
-
-// deleteExternalResources gets the context and NamespaceLabel and takes care of deleting the labels in the resource
-func (r *NamespaceLabelReconciler) deleteExternalResources(ctx context.Context, namespaceLabel *danaiodanaiov1alpha1.NamespaceLabel) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
-	clientSet := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
-	namespace, err := clientSet.CoreV1().Namespaces().Get(ctx, namespaceLabel.Namespace, v1.GetOptions{})
-	if err != nil {
-		log.Error(err, "unable to fetch namespace")
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-
-	}
-	var namespaceLabels danaiodanaiov1alpha1.NamespaceLabelList
-	if err := r.List(ctx, &namespaceLabels); err != nil {
-		log.Error(err, "unable to fetch NamespaceLabels")
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-	labels := namespace.GetLabels()
-	for key := range namespaceLabel.Spec.Labels {
-		delete(labels, key)
-		for _, nlabel := range namespaceLabels.Items {
-			if reflect.DeepEqual(nlabel.Spec.Labels, namespaceLabel.Spec.Labels) {
-				continue
-			} else if _, ok := nlabel.Spec.Labels[key]; ok {
-				labels[key] = nlabel.Spec.Labels[key]
-			}
-		}
-	}
-	namespace.SetLabels(labels)
-	clientSet.CoreV1().Namespaces().Update(ctx, namespace, v1.UpdateOptions{})
 	return ctrl.Result{}, nil
 }
 
