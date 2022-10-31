@@ -64,13 +64,8 @@ type NamespaceLabelReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the NamespaceLabel object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
+// This reconcile function adds the labels from the NamespaceLabel to the namespace it runs against,
+// and deletes the labels when the resource is deleted.
 func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	clientSet := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
@@ -99,29 +94,21 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	namespace.SetLabels(labels)
 	clientSet.CoreV1().Namespaces().Update(ctx, namespace, v1.UpdateOptions{})
 
-	myFinalizerName := "dana.io.dana.io/finalizer"
+	finalizerName := "dana.io.dana.io/finalizer"
 	if namespaceLabel.ObjectMeta.DeletionTimestamp.IsZero() {
-		// The object is not being deleted, so if it does not have our finalizer,
-		// then lets add the finalizer and update the object. This is equivalent
-		// registering our finalizer.
-		if !controllerutil.ContainsFinalizer(&namespaceLabel, myFinalizerName) {
-			controllerutil.AddFinalizer(&namespaceLabel, myFinalizerName)
+		if !controllerutil.ContainsFinalizer(&namespaceLabel, finalizerName) {
+			controllerutil.AddFinalizer(&namespaceLabel, finalizerName)
 			if err := r.Update(ctx, &namespaceLabel); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 	} else {
-		// The object is being deleted
-		if controllerutil.ContainsFinalizer(&namespaceLabel, myFinalizerName) {
-			// our finalizer is present, so lets handle any external dependency
+		if controllerutil.ContainsFinalizer(&namespaceLabel, finalizerName) {
 			if _, err := r.deleteExternalResources(ctx, &namespaceLabel); err != nil {
-				// if fail to delete the external dependency here, return with error
-				// so that it can be retried
 				return ctrl.Result{}, err
 			}
 
-			// remove our finalizer from the list and update it.
-			controllerutil.RemoveFinalizer(&namespaceLabel, myFinalizerName)
+			controllerutil.RemoveFinalizer(&namespaceLabel, finalizerName)
 			if err := r.Update(ctx, &namespaceLabel); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -130,6 +117,7 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return ctrl.Result{}, nil
 }
 
+// deleteExternalResources gets the context and NamespaceLabel and takes care of deleting the labels in the resource
 func (r *NamespaceLabelReconciler) deleteExternalResources(ctx context.Context, namespaceLabel *danaiodanaiov1alpha1.NamespaceLabel) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	clientSet := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())

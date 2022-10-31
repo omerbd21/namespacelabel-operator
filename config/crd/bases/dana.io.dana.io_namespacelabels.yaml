@@ -38,8 +38,8 @@ spec:
               labels:
                 additionalProperties:
                   type: string
-                description: Foo is an example field of NamespaceLabel. Edit namespacelabel_types.go
-                  to remove/update
+                description: Labels is a map of key-value pairs representing the labels
+                  the NamespaceLabel syncs
                 type: object
             type: object
           status:
