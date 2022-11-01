@@ -62,9 +62,9 @@ type NamespaceLabelReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=dana.io.dana.io,resources=namespacelabels,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=dana.io.dana.io,resources=namespacelabels/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=dana.io.dana.io,resources=namespacelabels/finalizers,verbs=update
+//+kubebuilder:rbac:groups=*,resources=namespacelabels,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=*,resources=namespacelabels/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=*,resources=namespacelabels/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
