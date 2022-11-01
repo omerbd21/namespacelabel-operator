@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+// AppLabel is a constant the saves the App Label prefix
 const AppLabel = "app.kubernetes.io/"
 
 // getProtectedLabels returns a slice of all "protected" (system-used/application-used) labels
