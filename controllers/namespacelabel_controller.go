@@ -73,7 +73,6 @@ type NamespaceLabelReconciler struct {
 func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	clientSet := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
-
 	var namespaceLabel danaiodanaiov1alpha1.NamespaceLabel
 	if err := r.Get(ctx, req.NamespacedName, &namespaceLabel); err != nil {
 		if errors.IsNotFound(err) {
