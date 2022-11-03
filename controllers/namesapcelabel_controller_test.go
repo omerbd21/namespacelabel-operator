@@ -27,6 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+const UpdatedSuffix = "updated"
+
 var _ = Describe("NamespaceLabel controller", func() {
 	Context("NamespaceLabel controller test", func() {
 
@@ -97,10 +99,6 @@ var _ = Describe("NamespaceLabel controller", func() {
 
 		})
 		It("should successfully update a custom resource for NamespaceLabel", func() {
-			By("Setting namespace labels beforehand")
-			namespace.SetLabels(map[string]string{
-				"label_1": "1",
-			})
 			By("Creating the custom resource for the Kind NamespaceLabel")
 			namespaceLabel := &v1alpha1.NamespaceLabel{
 				ObjectMeta: metav1.ObjectMeta{
@@ -109,7 +107,7 @@ var _ = Describe("NamespaceLabel controller", func() {
 				},
 				Spec: v1alpha1.NamespaceLabelSpec{
 					Labels: map[string]string{
-						"label_1": "2",
+						"label_1": "1",
 					},
 				},
 			}
@@ -124,6 +122,27 @@ var _ = Describe("NamespaceLabel controller", func() {
 			}
 			_, err = namespaceLabelReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespaceName,
+			})
+
+			By("Creating the custom resource to update the first one")
+			namespaceLabelUpdated := &v1alpha1.NamespaceLabel{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      typeNamespaceName.Name + UpdatedSuffix,
+					Namespace: typeNamespaceName.Namespace,
+				},
+				Spec: v1alpha1.NamespaceLabelSpec{
+					Labels: map[string]string{
+						"label_1": "2",
+					},
+				},
+			}
+
+			err = k8sClient.Create(ctx, namespaceLabelUpdated)
+			Expect(err).To(Not(HaveOccurred()))
+
+			By("Reconciling the custom resource")
+			_, err = namespaceLabelReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: types.NamespacedName{Name: namespaceLabelUpdated.Name, Namespace: namespaceLabelUpdated.Namespace},
 			})
 
 			By("Checking if the labek was successfully updated in the reconciliation")
