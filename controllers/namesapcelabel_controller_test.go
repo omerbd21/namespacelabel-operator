@@ -186,5 +186,192 @@ var _ = Describe("NamespaceLabel controller", func() {
 			Expect(ok).Should(BeFalse())
 
 		})
+		It("should successfully use only the last values assgined to a label with 3 NamespaceLabels", func() {
+			By("Creating the first custom resource for the Kind NamespaceLabel")
+			namespaceLabel := &v1alpha1.NamespaceLabel{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      typeNamespaceName.Name,
+					Namespace: typeNamespaceName.Namespace,
+				},
+				Spec: v1alpha1.NamespaceLabelSpec{
+					Labels: map[string]string{
+						"label_1": "2022",
+						"label_2": "2021",
+						"label_3": "2011",
+					},
+				},
+			}
+
+			err := k8sClient.Create(ctx, namespaceLabel)
+			Expect(err).To(Not(HaveOccurred()))
+
+			By("Reconciling the first custom resource")
+			namespaceLabelReconciler := &NamespaceLabelReconciler{
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
+			}
+			_, err = namespaceLabelReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespaceName,
+			})
+
+			By("Creating the second custom resource for the Kind NamespaceLabel")
+			namespaceLabel2 := &v1alpha1.NamespaceLabel{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      typeNamespaceName.Name + "2",
+					Namespace: typeNamespaceName.Namespace,
+				},
+				Spec: v1alpha1.NamespaceLabelSpec{
+					Labels: map[string]string{
+						"label_2": "2009",
+						"label_3": "2006",
+						"label_4": "2005",
+					},
+				},
+			}
+
+			err = k8sClient.Create(ctx, namespaceLabel2)
+			Expect(err).To(Not(HaveOccurred()))
+
+			By("Reconciling the second custom resource")
+			_, err = namespaceLabelReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: types.NamespacedName{Name: namespaceLabel2.Name, Namespace: namespaceLabel2.Namespace},
+			})
+
+			By("Creating the third custom resource for the Kind NamespaceLabel")
+			namespaceLabel3 := &v1alpha1.NamespaceLabel{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      typeNamespaceName.Name + "3",
+					Namespace: typeNamespaceName.Namespace,
+				},
+				Spec: v1alpha1.NamespaceLabelSpec{
+					Labels: map[string]string{
+						"label_3": "2004",
+						"label_4": "2002",
+						"label_5": "2001",
+					},
+				},
+			}
+
+			err = k8sClient.Create(ctx, namespaceLabel3)
+			Expect(err).To(Not(HaveOccurred()))
+
+			By("Reconciling the third custom resource")
+			_, err = namespaceLabelReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: types.NamespacedName{Name: namespaceLabel3.Name, Namespace: namespaceLabel3.Namespace},
+			})
+
+			By("Checking if the label was successfully updated in the reconciliation")
+			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
+			Expect(
+				namespace.GetLabels()["label_1"] == "2022" &&
+					namespace.GetLabels()["label_2"] == "2009" &&
+					namespace.GetLabels()["label_3"] == "2004" &&
+					namespace.GetLabels()["label_4"] == "2002" &&
+					namespace.GetLabels()["label_5"] == "2001").Should(BeTrue())
+
+		})
+		It("should successfully still use the previous labels after deleting one of 3", func() {
+			By("Creating the first custom resource for the Kind NamespaceLabel")
+			namespaceLabel := &v1alpha1.NamespaceLabel{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      typeNamespaceName.Name,
+					Namespace: typeNamespaceName.Namespace,
+				},
+				Spec: v1alpha1.NamespaceLabelSpec{
+					Labels: map[string]string{
+						"label_1": "2022",
+						"label_2": "2021",
+						"label_3": "2011",
+					},
+				},
+			}
+
+			err := k8sClient.Create(ctx, namespaceLabel)
+			Expect(err).To(Not(HaveOccurred()))
+
+			By("Reconciling the first custom resource")
+			namespaceLabelReconciler := &NamespaceLabelReconciler{
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
+			}
+			_, err = namespaceLabelReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespaceName,
+			})
+
+			By("Creating the second custom resource for the Kind NamespaceLabel")
+			namespaceLabel2 := &v1alpha1.NamespaceLabel{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      typeNamespaceName.Name + "2",
+					Namespace: typeNamespaceName.Namespace,
+				},
+				Spec: v1alpha1.NamespaceLabelSpec{
+					Labels: map[string]string{
+						"label_2": "2009",
+						"label_3": "2006",
+						"label_4": "2005",
+					},
+				},
+			}
+
+			err = k8sClient.Create(ctx, namespaceLabel2)
+			Expect(err).To(Not(HaveOccurred()))
+
+			By("Reconciling the second custom resource")
+			_, err = namespaceLabelReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: types.NamespacedName{Name: namespaceLabel2.Name, Namespace: namespaceLabel2.Namespace},
+			})
+
+			By("Creating the third custom resource for the Kind NamespaceLabel")
+			namespaceLabel3 := &v1alpha1.NamespaceLabel{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      typeNamespaceName.Name + "3",
+					Namespace: typeNamespaceName.Namespace,
+				},
+				Spec: v1alpha1.NamespaceLabelSpec{
+					Labels: map[string]string{
+						"label_3": "2004",
+						"label_4": "2002",
+						"label_5": "2001",
+					},
+				},
+			}
+
+			err = k8sClient.Create(ctx, namespaceLabel3)
+			Expect(err).To(Not(HaveOccurred()))
+
+			By("Reconciling the third custom resource")
+			_, err = namespaceLabelReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: types.NamespacedName{Name: namespaceLabel3.Name, Namespace: namespaceLabel3.Namespace},
+			})
+
+			By("Deleting the third custom resource")
+			err = k8sClient.Delete(ctx, namespaceLabel3)
+			Expect(err).To(Not(HaveOccurred()))
+
+			By("Reconciling deleting the third custom resource")
+			_, err = namespaceLabelReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: types.NamespacedName{Name: namespaceLabel3.Name, Namespace: namespaceLabel3.Namespace},
+			})
+
+			By("Checking the previous labels exist")
+			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
+			labels := namespace.GetLabels()
+			Expect(labels["label_4"] == "2005" && labels["label_3"] == "2006").Should(BeTrue())
+
+			By("Deleting the second custom resource")
+			err = k8sClient.Delete(ctx, namespaceLabel2)
+			Expect(err).To(Not(HaveOccurred()))
+
+			By("Reconciling deleting the third custom resource")
+			_, err = namespaceLabelReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: types.NamespacedName{Name: namespaceLabel2.Name, Namespace: namespaceLabel2.Namespace},
+			})
+
+			By("Checking the previous labels exist")
+			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
+			labels = namespace.GetLabels()
+			Expect(labels["label_2"] == "2021" && labels["label_3"] == "2011").Should(BeTrue())
+
+		})
 	})
 })
