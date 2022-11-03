@@ -104,7 +104,7 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		log.Error(err, "unable to fetch namespace")
 		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
-	
+	}
 
 	finalizerName := "dana.io.dana.io/finalizer"
 	if namespaceLabel.ObjectMeta.DeletionTimestamp.IsZero() {
