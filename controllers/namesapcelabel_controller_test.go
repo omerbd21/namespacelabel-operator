@@ -48,7 +48,6 @@ var _ = Describe("NamespaceLabel controller", func() {
 					Name: NamespaceLabelName + fmt.Sprint(testCounter),
 				},
 			}
-			GinkgoWriter.Println(namespace.Name)
 			err := k8sClient.Create(ctx, namespace)
 			Expect(err).To(Not(HaveOccurred()))
 			typeNamespaceName.Namespace = NamespaceLabelName + fmt.Sprint(testCounter)
@@ -129,8 +128,43 @@ var _ = Describe("NamespaceLabel controller", func() {
 
 			By("Checking if the labek was successfully updated in the reconciliation")
 			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
-			GinkgoWriter.Println(namespace.GetLabels())
 			Expect(namespace.GetLabels()["label_1"] == "2").Should(BeTrue())
+
+		})
+		It("should successfully delete a custom resource for NamespaceLabel", func() {
+			By("Creating the custom resource for the Kind NamespaceLabel")
+			namespaceLabel := &v1alpha1.NamespaceLabel{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      typeNamespaceName.Name,
+					Namespace: typeNamespaceName.Namespace,
+				},
+				Spec: v1alpha1.NamespaceLabelSpec{
+					Labels: map[string]string{
+						"label_1": "2",
+					},
+				},
+			}
+
+			err := k8sClient.Create(ctx, namespaceLabel)
+			Expect(err).To(Not(HaveOccurred()))
+
+			By("Deleting the custom resource for the Kind NamespaceLabel")
+			err = k8sClient.Delete(ctx, namespaceLabel)
+			Expect(err).To(Not(HaveOccurred()))
+
+			By("Reconciling the custom resource")
+			namespaceLabelReconciler := &NamespaceLabelReconciler{
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
+			}
+			_, err = namespaceLabelReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespaceName,
+			})
+
+			By("Checking if the labek was successfully updated in the reconciliation")
+			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
+			_, ok := namespace.GetLabels()["label_1"]
+			Expect(ok).Should(BeFalse())
 
 		})
 	})
