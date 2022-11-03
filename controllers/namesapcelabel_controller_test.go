@@ -15,6 +15,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
@@ -32,36 +33,38 @@ var _ = Describe("NamespaceLabel controller", func() {
 		const NamespaceLabelName = "test-namespacelabel"
 
 		ctx := context.Background()
-		//clientSet := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
-		//testenv create namespace
 		namespace := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: NamespaceLabelName,
 			},
 		}
-
+		testCounter := 0
 		typeNamespaceName := types.NamespacedName{Name: NamespaceLabelName, Namespace: NamespaceLabelName}
 
 		BeforeEach(func() {
-			By("Creating the Namespace to perform the tests")
+			testCounter++
+			namespace := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: NamespaceLabelName + fmt.Sprint(testCounter),
+				},
+			}
+			GinkgoWriter.Println(namespace.Name)
 			err := k8sClient.Create(ctx, namespace)
 			Expect(err).To(Not(HaveOccurred()))
-
+			typeNamespaceName.Namespace = NamespaceLabelName + fmt.Sprint(testCounter)
 		})
 
 		AfterEach(func() {
-			// TODO(user): Attention if you improve this code by adding other context test you MUST
-			// be aware of the current delete namespace limitations. More info: https://book.kubebuilder.io/reference/envtest.html#testing-considerations
-			By("Deleting the Namespace to perform the tests")
-			_ = k8sClient.Delete(ctx, namespace)
+			//err := k8sClient.Delete(ctx, namespace)
+			//Expect(err).To(Not(HaveOccurred()))
 		})
 
 		It("should successfully reconcile a custom resource for NamespaceLabel", func() {
 			By("Creating the custom resource for the Kind NamespaceLabel")
 			namespaceLabel := &v1alpha1.NamespaceLabel{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      NamespaceLabelName,
-					Namespace: NamespaceLabelName,
+					Name:      typeNamespaceName.Name,
+					Namespace: typeNamespaceName.Namespace,
 				},
 				Spec: v1alpha1.NamespaceLabelSpec{
 					Labels: map[string]string{
@@ -90,8 +93,44 @@ var _ = Describe("NamespaceLabel controller", func() {
 			})
 			Expect(err).To(Not(HaveOccurred()))
 			By("Checking if label was successfully assigned to the namespace in the reconciliation")
-			k8sClient.Get(ctx, types.NamespacedName{Name: NamespaceLabelName}, namespace)
+			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
 			Expect(namespace.GetLabels()["label_1"] == "1").Should(BeTrue())
+
+		})
+		It("should successfully update a custom resource for NamespaceLabel", func() {
+			By("Setting namespace labels beforehand")
+			namespace.SetLabels(map[string]string{
+				"label_1": "1",
+			})
+			By("Creating the custom resource for the Kind NamespaceLabel")
+			namespaceLabel := &v1alpha1.NamespaceLabel{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      typeNamespaceName.Name,
+					Namespace: typeNamespaceName.Namespace,
+				},
+				Spec: v1alpha1.NamespaceLabelSpec{
+					Labels: map[string]string{
+						"label_1": "2",
+					},
+				},
+			}
+
+			err := k8sClient.Create(ctx, namespaceLabel)
+			Expect(err).To(Not(HaveOccurred()))
+
+			By("Reconciling the custom resource")
+			namespaceLabelReconciler := &NamespaceLabelReconciler{
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
+			}
+			_, err = namespaceLabelReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespaceName,
+			})
+
+			By("Checking if the labek was successfully updated in the reconciliation")
+			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
+			GinkgoWriter.Println(namespace.GetLabels())
+			Expect(namespace.GetLabels()["label_1"] == "2").Should(BeTrue())
 
 		})
 	})
