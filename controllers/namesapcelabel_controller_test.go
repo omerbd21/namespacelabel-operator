@@ -20,11 +20,9 @@ import (
 	"github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -34,27 +32,28 @@ var _ = Describe("NamespaceLabel controller", func() {
 		const NamespaceLabelName = "test-namespacelabel"
 
 		ctx := context.Background()
-		clientSet := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
-		/*namespace := &corev1.Namespace{
+		//clientSet := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
+		//testenv create namespace
+		namespace := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: NamespaceLabelName,
 			},
-		}*/
+		}
 
-		typeNamespaceName := types.NamespacedName{Name: NamespaceLabelName, Namespace: "default"}
+		typeNamespaceName := types.NamespacedName{Name: NamespaceLabelName, Namespace: NamespaceLabelName}
 
 		BeforeEach(func() {
 			By("Creating the Namespace to perform the tests")
-			//err := k8sClient.Create(ctx, namespace)
-			//Expect(err).To(Not(HaveOccurred()))
+			err := k8sClient.Create(ctx, namespace)
+			Expect(err).To(Not(HaveOccurred()))
 
 		})
 
 		AfterEach(func() {
 			// TODO(user): Attention if you improve this code by adding other context test you MUST
 			// be aware of the current delete namespace limitations. More info: https://book.kubebuilder.io/reference/envtest.html#testing-considerations
-			//By("Deleting the Namespace to perform the tests")
-			//_ = k8sClient.Delete(ctx, namespace)
+			By("Deleting the Namespace to perform the tests")
+			_ = k8sClient.Delete(ctx, namespace)
 		})
 
 		It("should successfully reconcile a custom resource for NamespaceLabel", func() {
@@ -62,7 +61,7 @@ var _ = Describe("NamespaceLabel controller", func() {
 			namespaceLabel := &v1alpha1.NamespaceLabel{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      NamespaceLabelName,
-					Namespace: "default",
+					Namespace: NamespaceLabelName,
 				},
 				Spec: v1alpha1.NamespaceLabelSpec{
 					Labels: map[string]string{
@@ -91,7 +90,7 @@ var _ = Describe("NamespaceLabel controller", func() {
 			})
 			Expect(err).To(Not(HaveOccurred()))
 			By("Checking if label was successfully assigned to the namespace in the reconciliation")
-			namespace, err := clientSet.CoreV1().Namespaces().Get(ctx, namespaceLabel.Namespace, v1.GetOptions{})
+			k8sClient.Get(ctx, types.NamespacedName{Name: NamespaceLabelName}, namespace)
 			Expect(namespace.GetLabels()["label_1"] == "1").Should(BeTrue())
 
 		})
