@@ -1,6 +1,7 @@
-package utils
+package utils_test
 
 import (
+	"github.com/omerbd21/namespacelabel-operator/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -13,8 +14,8 @@ var _ = Describe("Utils", func() {
 			}
 			foundWord := "one"
 			notFoundWord := "four"
-			Expect(Contains(words, foundWord)).Should(BeTrue())
-			Expect(Contains(words, notFoundWord)).Should(BeFalse())
+			Expect(utils.Contains(words, foundWord)).Should(BeTrue())
+			Expect(utils.Contains(words, notFoundWord)).Should(BeFalse())
 		})
 	})
 })

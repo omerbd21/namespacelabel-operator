@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package controllers_test
 
 import (
 	"context"
@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
+	"github.com/omerbd21/namespacelabel-operator/controllers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -85,7 +86,7 @@ var _ = Describe("NamespaceLabel controller", func() {
 			}, time.Minute, time.Second).Should(Succeed())
 
 			By("Reconciling the custom resource created")
-			namespaceLabelReconciler := &NamespaceLabelReconciler{
+			namespaceLabelReconciler := &controllers.NamespaceLabelReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
@@ -117,7 +118,7 @@ var _ = Describe("NamespaceLabel controller", func() {
 			Expect(err).To(Not(HaveOccurred()))
 
 			By("Reconciling the custom resource")
-			namespaceLabelReconciler := &NamespaceLabelReconciler{
+			namespaceLabelReconciler := &controllers.NamespaceLabelReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
@@ -173,7 +174,7 @@ var _ = Describe("NamespaceLabel controller", func() {
 			Expect(err).To(Not(HaveOccurred()))
 
 			By("Reconciling the custom resource")
-			namespaceLabelReconciler := &NamespaceLabelReconciler{
+			namespaceLabelReconciler := &controllers.NamespaceLabelReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
@@ -207,7 +208,7 @@ var _ = Describe("NamespaceLabel controller", func() {
 			Expect(err).To(Not(HaveOccurred()))
 
 			By("Reconciling the first custom resource")
-			namespaceLabelReconciler := &NamespaceLabelReconciler{
+			namespaceLabelReconciler := &controllers.NamespaceLabelReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
@@ -291,7 +292,7 @@ var _ = Describe("NamespaceLabel controller", func() {
 			Expect(err).To(Not(HaveOccurred()))
 
 			By("Reconciling the first custom resource")
-			namespaceLabelReconciler := &NamespaceLabelReconciler{
+			namespaceLabelReconciler := &controllers.NamespaceLabelReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
@@ -388,13 +389,13 @@ var _ = Describe("NamespaceLabel controller", func() {
 				},
 				Spec: v1alpha1.NamespaceLabelSpec{
 					Labels: map[string]string{
-						"kubernetes.io/metadata.name": "name",
-						AppLabel + "name":             "name",
-						AppLabel + "instance":         "instance",
-						AppLabel + "version":          "version",
-						AppLabel + "component":        "component",
-						AppLabel + "part-of":          "part-of",
-						AppLabel + "managed-by":       "managed-by",
+						"kubernetes.io/metadata.name":       "name",
+						controllers.AppLabel + "name":       "name",
+						controllers.AppLabel + "instance":   "instance",
+						controllers.AppLabel + "version":    "version",
+						controllers.AppLabel + "component":  "component",
+						controllers.AppLabel + "part-of":    "part-of",
+						controllers.AppLabel + "managed-by": "managed-by",
 					},
 				},
 			}
@@ -402,7 +403,7 @@ var _ = Describe("NamespaceLabel controller", func() {
 			Expect(err).To(Not(HaveOccurred()))
 
 			By("Reconciling the custom resource")
-			namespaceLabelReconciler := &NamespaceLabelReconciler{
+			namespaceLabelReconciler := &controllers.NamespaceLabelReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
@@ -416,5 +417,6 @@ var _ = Describe("NamespaceLabel controller", func() {
 			Expect(reflect.DeepEqual(labels, newLabels)).Should(BeTrue())
 
 		})
+
 	})
 })

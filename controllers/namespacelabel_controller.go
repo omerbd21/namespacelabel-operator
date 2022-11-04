@@ -21,6 +21,7 @@ import (
 	"reflect"
 
 	danaiodanaiov1alpha1 "github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
+	utils "github.com/omerbd21/namespacelabel-operator/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -44,16 +45,6 @@ func getProtectedLabels() []string {
 		AppLabel + "part-of",
 		AppLabel + "managed-by",
 	}
-}
-
-// contains gets a slice of strings and a string and returns whether the string is in the slice
-func contains(strings []string, element string) bool {
-	for _, str := range strings {
-		if str == element {
-			return true
-		}
-	}
-	return false
 }
 
 // NamespaceLabelReconciler reconciles a NamespaceLabel object
@@ -92,7 +83,7 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	labels := namespace.GetLabels()
 	protectedLabels := getProtectedLabels()
 	for key, val := range namespaceLabel.Spec.Labels {
-		if !contains(protectedLabels, key) {
+		if !utils.Contains(protectedLabels, key) {
 			labels[key] = val
 		}
 	}
