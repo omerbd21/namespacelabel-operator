@@ -14,10 +14,10 @@ jobs:
       - name: checkout repo
         uses: actions/checkout@v2
       - name: install ginkgo
-        run: sudo apt-get update -y && sudo apt-get install -y ginkgo=2.4.0
+        run: go install github.com/onsi/ginkgo/v2/ginkgo && go get github.com/onsi/gomega/... 
       - uses: actions/setup-go@v3
         with:
           go-version: '>=1.19.2'
-      - run: go version && ginkgo version
+      - run: go version && $GOBIN/ginkgo version
       - name: test
         run: sudo make test
