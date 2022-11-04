@@ -16,7 +16,5 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           go-version: '>=1.19.2'
-      - name: Build
-        run: export GOBIN=/home/runner/work/namespacelabel-operator && make build
       - name: Test
         run: make test
