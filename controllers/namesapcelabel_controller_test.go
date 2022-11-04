@@ -16,6 +16,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
@@ -371,6 +372,48 @@ var _ = Describe("NamespaceLabel controller", func() {
 			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
 			labels = namespace.GetLabels()
 			Expect(labels["label_2"] == "2021" && labels["label_3"] == "2011").Should(BeTrue())
+
+		})
+		It("should successfully protect the protected labels from being changed", func() {
+
+			By("Getting the previous labels existing on the namespace")
+			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
+			labels := namespace.GetLabels()
+
+			By("Creating the custom resource for the Kind NamespaceLabel")
+			namespaceLabel := &v1alpha1.NamespaceLabel{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      typeNamespaceName.Name,
+					Namespace: typeNamespaceName.Namespace,
+				},
+				Spec: v1alpha1.NamespaceLabelSpec{
+					Labels: map[string]string{
+						"kubernetes.io/metadata.name": "name",
+						AppLabel + "name":             "name",
+						AppLabel + "instance":         "instance",
+						AppLabel + "version":          "version",
+						AppLabel + "component":        "component",
+						AppLabel + "part-of":          "part-of",
+						AppLabel + "managed-by":       "managed-by",
+					},
+				},
+			}
+			err := k8sClient.Create(ctx, namespaceLabel)
+			Expect(err).To(Not(HaveOccurred()))
+
+			By("Reconciling the custom resource")
+			namespaceLabelReconciler := &NamespaceLabelReconciler{
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
+			}
+			_, err = namespaceLabelReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespaceName,
+			})
+
+			By("Checking the previous labels exist")
+			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
+			newLabels := namespace.GetLabels()
+			Expect(reflect.DeepEqual(labels, newLabels)).Should(BeTrue())
 
 		})
 	})
