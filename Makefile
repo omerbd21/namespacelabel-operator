@@ -29,7 +29,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
 # dana.io.dana.io/namespacelabel-operator-bundle:$VERSION and dana.io.dana.io/namespacelabel-operator-catalog:$VERSION.
-IMAGE_TAG_BASE ?= dana.io.dana.io/namespacelabel-operator
+IMAGE_TAG_BASE ?= docker.io/namespacelabel-operator
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
@@ -103,7 +103,7 @@ vet: ## Run go vet against code.
 
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
+	$(ENVTEST) ./... -coverprofile cover.out
 
 ##@ Build
 
@@ -176,7 +176,7 @@ $(LOCALBIN):
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
-ENVTEST ?= $(LOCALBIN)/setup-envtest
+ENVTEST ?= /home/omer/go/bin/ginkgo
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7

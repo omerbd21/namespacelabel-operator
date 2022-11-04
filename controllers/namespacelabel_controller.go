@@ -18,14 +18,34 @@ package controllers
 
 import (
 	"context"
+	"reflect"
 
+	danaiodanaiov1alpha1 "github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
+	utils "github.com/omerbd21/namespacelabel-operator/utils"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	mydomainv1alpha1 "github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
 )
+
+// AppLabel is a constant the saves the App Label prefix
+const AppLabel = "app.kubernetes.io/"
+
+// getProtectedLabels returns a slice of all "protected" (system-used/application-used) labels
+func getProtectedLabels() []string {
+	return []string{"kubernetes.io/metadata.name",
+		AppLabel + "name",
+		AppLabel + "instance",
+		AppLabel + "version",
+		AppLabel + "component",
+		AppLabel + "part-of",
+		AppLabel + "managed-by",
+	}
+}
 
 // NamespaceLabelReconciler reconciles a NamespaceLabel object
 type NamespaceLabelReconciler struct {
@@ -39,24 +59,90 @@ type NamespaceLabelReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the NamespaceLabel object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
+// This reconcile function adds the labels from the NamespaceLabel to the namespace it runs against,
+// and deletes the labels when the resource is deleted.
 func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx)
+	var namespaceLabel danaiodanaiov1alpha1.NamespaceLabel
+	if err := r.Get(ctx, req.NamespacedName, &namespaceLabel); err != nil {
+		if errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		log.Error(err, "unable to fetch NamespaceLabel")
+		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
+	}
+	var namespace corev1.Namespace
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: namespaceLabel.ObjectMeta.Namespace}, &namespace); err != nil {
+		if errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		log.Error(err, "unable to fetch namespace")
+		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
+	}
 
-	// TODO(user): your logic here
+	labels := namespace.GetLabels()
+	protectedLabels := getProtectedLabels()
+	for key, val := range namespaceLabel.Spec.Labels {
+		if !utils.Contains(protectedLabels, key) {
+			labels[key] = val
+		}
+	}
 
+	namespace.SetLabels(labels)
+	if err := r.Client.Update(ctx, &namespace); err != nil {
+		if errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		log.Error(err, "unable to fetch namespace")
+		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
+	}
+
+	finalizerName := "dana.io.dana.io/finalizer"
+	if namespaceLabel.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !controllerutil.ContainsFinalizer(&namespaceLabel, finalizerName) {
+			controllerutil.AddFinalizer(&namespaceLabel, finalizerName)
+			if err := r.Update(ctx, &namespaceLabel); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		if controllerutil.ContainsFinalizer(&namespaceLabel, finalizerName) {
+			var namespaceLabels danaiodanaiov1alpha1.NamespaceLabelList
+			if err := r.List(ctx, &namespaceLabels); err != nil {
+				log.Error(err, "unable to fetch NamespaceLabels")
+				return ctrl.Result{}, client.IgnoreNotFound(err)
+			}
+			for key := range namespaceLabel.Spec.Labels {
+				delete(labels, key)
+				for _, nlabel := range namespaceLabels.Items {
+					if reflect.DeepEqual(nlabel.Spec.Labels, namespaceLabel.Spec.Labels) {
+						continue
+					} else if _, ok := nlabel.Spec.Labels[key]; ok {
+						labels[key] = nlabel.Spec.Labels[key]
+					}
+				}
+			}
+			namespace.SetLabels(labels)
+			if err := r.Client.Update(ctx, &namespace); err != nil {
+				if errors.IsNotFound(err) {
+					return ctrl.Result{}, nil
+				}
+				log.Error(err, "unable to fetch namespace")
+				return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
+			}
+
+			controllerutil.RemoveFinalizer(&namespaceLabel, finalizerName)
+			if err := r.Update(ctx, &namespaceLabel); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	}
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *NamespaceLabelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&mydomainv1alpha1.NamespaceLabel{}).
+		For(&danaiodanaiov1alpha1.NamespaceLabel{}).
 		Complete(r)
 }
