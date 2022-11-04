@@ -14,7 +14,7 @@ jobs:
       - name: checkout repo
         uses: actions/checkout@v2
       - name: install ginkgo
-        run: sudo apt-get update -y && sudo apt-get install -y golang-ginkgo-dev
+        run: sudo apt-get update -y && sudo apt-get install -y ginkgo=2.4.0
       - uses: actions/setup-go@v3
         with:
           go-version: '>=1.19.2'
