@@ -176,7 +176,7 @@ $(LOCALBIN):
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
-ENVTEST ?= $(GOBIN)/ginkgo
+ENVTEST ?= go test
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
