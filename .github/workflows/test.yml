@@ -11,5 +11,5 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Echo hello
-        run: echo hello
+      - name: Test
+        run: sudo make test
