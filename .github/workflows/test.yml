@@ -16,5 +16,7 @@ jobs:
           go-version: 1.19.2
       - uses: actions/checkout@v2
       - run: go version
+      - name: build
+        run: sudo make build
       - name: test
         run: sudo make test
