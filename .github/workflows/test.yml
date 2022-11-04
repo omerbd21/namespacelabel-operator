@@ -13,10 +13,10 @@ jobs:
     steps:
       - name: checkout repo
         uses: actions/checkout@v2
+      - name: install ginkgo
+        run: sudo apt-get update -y && sudo apt-get install -y golang-ginkgo-dev
       - uses: actions/setup-go@v3
         with:
           go-version: '>=1.19.2'
-      - name: install ginkgo
-        run: sudo apt-get update -y && sudo apt-get install -y golang-ginkgo-dev
       - name: test
         run: sudo make test
