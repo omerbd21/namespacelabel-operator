@@ -16,7 +16,5 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           go-version: '>=1.19.2'
-      - name: Install ginkgo & gomega
-        run: go get github.com/onsi/ginkgo/ginkgo github.com/onsi/gomega/...
       - name: Test
         run: make test
