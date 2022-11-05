@@ -17,11 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"flag"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	"go.elastic.co/ecslogrus"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,12 +35,13 @@ import (
 
 	danaiodanaiov1alpha1 "github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
 	"github.com/omerbd21/namespacelabel-operator/controllers"
+	"github.com/sirupsen/logrus"
 	//+kubebuilder:scaffold:imports
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme = runtime.NewScheme()
+	//setupLog = ctrl.Log.WithName("setup")
 )
 
 func init() {
@@ -63,7 +66,10 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	//ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	log := logrus.New()
+	log.SetFormatter(&ecslogrus.Formatter{})
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -85,7 +91,8 @@ func main() {
 		// LeaderElectionReleaseOnCancel: true,
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		//setupLog.Error(err, "unable to start manager")
+		log.WithError(errors.New(err.Error())).Error("unable to start manager")
 		os.Exit(1)
 	}
 
@@ -93,23 +100,27 @@ func main() {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "NamespaceLabel")
+		//setupLog.Error(err, "unable to create controller", "controller", "NamespaceLabel")
+		log.WithError(errors.New(err.Error())).Error("unable to create controller")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
+		//setupLog.Error(err, "unable to set up health check")
+		log.WithError(errors.New(err.Error())).Error("unable to set up health check")
 		os.Exit(1)
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
+		//setupLog.Error(err, "unable to set up ready check")
+		log.WithError(errors.New(err.Error())).Error("unable to set up ready check")
 		os.Exit(1)
 	}
 
-	setupLog.Info("starting manager")
+	log.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
+		//setupLog.Error(err, "problem running manager")
+		log.WithError(errors.New(err.Error())).Error("problem running manager")
 		os.Exit(1)
 	}
 }
