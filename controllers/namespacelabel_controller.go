@@ -118,14 +118,13 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				log.WithError(errors.New(err.Error())).WithFields(logrus.Fields{"deleted_namespacelabel": namespaceLabel.Name}).Error("unable to fetch NamespaceLabels while trying to delete one of them")
 				return ctrl.Result{}, client.IgnoreNotFound(err)
 			}
-			for key := range namespaceLabel.Spec.Labels {
-				delete(labels, key)
-				for _, nlabel := range namespaceLabels.Items {
-					if reflect.DeepEqual(nlabel.Spec.Labels, namespaceLabel.Spec.Labels) {
-						continue
-					} else if _, ok := nlabel.Spec.Labels[key]; ok {
-						labels[key] = nlabel.Spec.Labels[key]
-					}
+			labels = map[string]string{}
+			for _, nlabel := range namespaceLabels.Items {
+				if reflect.DeepEqual(nlabel.Spec.Labels, namespaceLabel.Spec.Labels) {
+					continue
+				}
+				for key, val := range nlabel.Spec.Labels {
+					labels[key] = val
 				}
 			}
 			namespace.SetLabels(labels)
