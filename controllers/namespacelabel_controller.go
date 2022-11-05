@@ -64,7 +64,6 @@ type NamespaceLabelReconciler struct {
 // This reconcile function adds the labels from the NamespaceLabel to the namespace it runs against,
 // and deletes the labels when the resource is deleted.
 func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	//log := log.FromContext(ctx)
 	log := logrus.New()
 	log.SetFormatter(&ecslogrus.Formatter{})
 
@@ -76,6 +75,7 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		log.WithError(errors.New(err.Error())).WithFields(logrus.Fields{"NamespaceLabel": req.NamespacedName}).Error("unable to fetch NamespaceLabel")
 		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 	}
+
 	var namespace corev1.Namespace
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: namespaceLabel.ObjectMeta.Namespace}, &namespace); err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -90,10 +90,11 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	for key, val := range namespaceLabel.Spec.Labels {
 		if !utils.Contains(protectedLabels, key) {
 			labels[key] = val
-		}
+		} // Checks if the label is protected before adding it to the namespace
 	}
 	log.WithFields(logrus.Fields{"labels": labels, "namespace": namespace.Name}).Info("labels were put on the namesapce")
 	namespace.SetLabels(labels)
+
 	if err := r.Client.Update(ctx, &namespace); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -118,11 +119,12 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				log.WithError(errors.New(err.Error())).WithFields(logrus.Fields{"deleted_namespacelabel": namespaceLabel.Name}).Error("unable to fetch NamespaceLabels while trying to delete one of them")
 				return ctrl.Result{}, client.IgnoreNotFound(err)
 			}
+
 			labels = map[string]string{}
 			for _, nlabel := range namespaceLabels.Items {
 				if reflect.DeepEqual(nlabel.Spec.Labels, namespaceLabel.Spec.Labels) {
 					continue
-				}
+				} // If the NamespaceLabel is the current one, skip it and don't add it to the labels map
 				for key, val := range nlabel.Spec.Labels {
 					labels[key] = val
 				}
