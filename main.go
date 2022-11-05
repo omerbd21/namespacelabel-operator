@@ -21,8 +21,6 @@ import (
 	"flag"
 	"os"
 
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	// to ensure that exec-entrypoint and run can make use of them.
 	"go.elastic.co/ecslogrus"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
@@ -41,14 +39,12 @@ import (
 
 var (
 	scheme = runtime.NewScheme()
-	//setupLog = ctrl.Log.WithName("setup")
 )
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(danaiodanaiov1alpha1.AddToScheme(scheme))
-	//+kubebuilder:scaffold:scheme
 }
 
 func main() {
@@ -66,8 +62,6 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	//ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-
 	log := logrus.New()
 	log.SetFormatter(&ecslogrus.Formatter{})
 
@@ -78,20 +72,8 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "717a25f7.dana.io.dana.io",
-		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
-		// when the Manager ends. This requires the binary to immediately end when the
-		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
-		// speeds up voluntary leader transitions as the new leader don't have to wait
-		// LeaseDuration time first.
-		//
-		// In the default scaffold provided, the program ends immediately after
-		// the manager stops, so would be fine to enable this option. However,
-		// if you are doing or is intended to do any operation such as perform cleanups
-		// after the manager stops then its usage might be unsafe.
-		// LeaderElectionReleaseOnCancel: true,
 	})
 	if err != nil {
-		//setupLog.Error(err, "unable to start manager")
 		log.WithError(errors.New(err.Error())).Error("unable to start manager")
 		os.Exit(1)
 	}
@@ -100,26 +82,22 @@ func main() {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		//setupLog.Error(err, "unable to create controller", "controller", "NamespaceLabel")
 		log.WithError(errors.New(err.Error())).Error("unable to create controller")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		//setupLog.Error(err, "unable to set up health check")
 		log.WithError(errors.New(err.Error())).Error("unable to set up health check")
 		os.Exit(1)
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		//setupLog.Error(err, "unable to set up ready check")
 		log.WithError(errors.New(err.Error())).Error("unable to set up ready check")
 		os.Exit(1)
 	}
 
 	log.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		//setupLog.Error(err, "problem running manager")
 		log.WithError(errors.New(err.Error())).Error("problem running manager")
 		os.Exit(1)
 	}
