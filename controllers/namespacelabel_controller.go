@@ -78,9 +78,6 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	var namespace corev1.Namespace
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: namespaceLabel.ObjectMeta.Namespace}, &namespace); err != nil {
-		if k8serrors.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
 		log.WithError(errors.New(err.Error())).WithFields(logrus.Fields{"namespace": namespaceLabel.ObjectMeta.Namespace}).Error("unable to fetch namespace while getting previous labels")
 		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 	}
@@ -96,9 +93,6 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	namespace.SetLabels(labels)
 
 	if err := r.Client.Update(ctx, &namespace); err != nil {
-		if k8serrors.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
 		log.WithError(errors.New(err.Error())).WithFields(logrus.Fields{"namespace": namespace.Name, "labels": labels}).Error("unable to fetch namespace while updating new labels")
 		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 	}
@@ -131,9 +125,6 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			}
 			namespace.SetLabels(labels)
 			if err := r.Client.Update(ctx, &namespace); err != nil {
-				if k8serrors.IsNotFound(err) {
-					return ctrl.Result{}, nil
-				}
 				log.WithError(errors.New(err.Error())).WithFields(logrus.Fields{"namespace": namespace.Name}).Error("unable to fetch namespace while trying to update its labels post deletion")
 				return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 			}
