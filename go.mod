@@ -1,10 +1,12 @@
-module github.com/omerbd21/namespacelabel-operator
+module danaiodanaio/omerbd21/namespacelabel-operator
 
 go 1.19
 
 require (
 	github.com/onsi/ginkgo/v2 v2.4.0
 	github.com/onsi/gomega v1.23.0
+	github.com/sirupsen/logrus v1.8.1
+	go.elastic.co/ecslogrus v1.0.0
 	k8s.io/api v0.25.3
 	k8s.io/apimachinery v0.25.3
 	k8s.io/client-go v0.25.3

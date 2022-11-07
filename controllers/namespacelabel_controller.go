@@ -21,8 +21,10 @@ import (
 	"errors"
 	"reflect"
 
-	danaiodanaiov1alpha1 "github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
-	utils "github.com/omerbd21/namespacelabel-operator/utils"
+
+	danaiodanaiov1alpha1 "danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
+	utils "danaiodanaio/omerbd21/namespacelabel-operator/utils"
+
 	"github.com/sirupsen/logrus"
 	"go.elastic.co/ecslogrus"
 	corev1 "k8s.io/api/core/v1"
@@ -58,6 +60,7 @@ type NamespaceLabelReconciler struct {
 //+kubebuilder:rbac:groups=dana.io.dana.io,resources=namespacelabels,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=dana.io.dana.io,resources=namespacelabels/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=dana.io.dana.io,resources=namespacelabels/finalizers,verbs=update
+//+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

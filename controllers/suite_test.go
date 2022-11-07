@@ -17,7 +17,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
+	"danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
