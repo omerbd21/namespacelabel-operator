@@ -22,7 +22,7 @@ import (
 	"reflect"
 
 	danaiodanaiov1alpha1 "danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
-	utilsFunc "danaiodanaio/omerbd21/namespacelabel-operator/utils"
+	utils "danaiodanaio/omerbd21/namespacelabel-operator/utils"
 	"github.com/sirupsen/logrus"
 	"go.elastic.co/ecslogrus"
 	corev1 "k8s.io/api/core/v1"
@@ -86,7 +86,7 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	labels := namespace.GetLabels()
 	protectedLabels := getProtectedLabels()
 	for key, val := range namespaceLabel.Spec.Labels {
-		if !utilsFunc.Contains(protectedLabels, key) {
+		if !utils.Contains(protectedLabels, key) {
 			labels[key] = val
 		} // Checks if the label is protected before adding it to the namespace
 	}
