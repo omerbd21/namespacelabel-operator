@@ -304,6 +304,8 @@ var _ = Describe("NamespaceLabel controller", func() {
 	})
 })
 
+// reconcileResource gets the reconciler object, the context, the name and namespace of the object to be reconciled, and should the namespaceLabel
+// exist in the evantually function. it returns whether the resource exists and an error.
 func reconcileResource(r controllers.NamespaceLabelReconciler, ctx context.Context, name string, namespace string, shouldBe bool) (bool, error) {
 	namespacedName := types.NamespacedName{Name: name, Namespace: namespace}
 	_, err := r.Reconcile(ctx, reconcile.Request{
@@ -315,7 +317,7 @@ func reconcileResource(r controllers.NamespaceLabelReconciler, ctx context.Conte
 	} else {
 		be = BeFalse()
 	}
-	created := Eventually(func() bool {
+	exists := Eventually(func() bool {
 		var namespaceLabel v1alpha1.NamespaceLabel
 		err := k8sClient.Get(ctx, namespacedName, &namespaceLabel)
 		if err != nil {
@@ -323,9 +325,11 @@ func reconcileResource(r controllers.NamespaceLabelReconciler, ctx context.Conte
 		}
 		return true
 	}, timeout, interval).Should(be)
-	return created, err
+	return exists, err
 }
 
+//changeNamespaceLabelState gets a map of labels, the context, the name and namespace of the resource to be created/deleted and the action
+// (whether to delete or create the resource). It returns an error.
 func changeNamespaceLabelState(labels map[string]string, ctx context.Context, name string, namespace string, action string) error {
 	namespaceLabel := &v1alpha1.NamespaceLabel{
 		ObjectMeta: metav1.ObjectMeta{
@@ -342,6 +346,8 @@ func changeNamespaceLabelState(labels map[string]string, ctx context.Context, na
 		err = k8sClient.Create(ctx, namespaceLabel)
 	case "delete":
 		err = k8sClient.Delete(ctx, namespaceLabel)
+	default:
+		return errors.New("Invalid action")
 	}
 	return err
 }
