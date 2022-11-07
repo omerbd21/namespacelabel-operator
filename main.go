@@ -31,8 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	danaiodanaiov1alpha1 "github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
-	"github.com/omerbd21/namespacelabel-operator/controllers"
+	danaiodanaiov1alpha1 "danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
+	"danaiodanaio/omerbd21/namespacelabel-operator/controllers"
 	"github.com/sirupsen/logrus"
 	//+kubebuilder:scaffold:imports
 )

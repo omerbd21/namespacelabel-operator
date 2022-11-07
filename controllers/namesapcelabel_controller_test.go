@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/omerbd21/namespacelabel-operator/api/v1alpha1"
-	"github.com/omerbd21/namespacelabel-operator/controllers"
+	"danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
+	"danaiodanaio/omerbd21/namespacelabel-operator/controllers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"

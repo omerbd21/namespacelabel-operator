@@ -1,7 +1,7 @@
 package utils_test
 
 import (
-	"github.com/omerbd21/namespacelabel-operator/utils"
+	"danaiodanaio/omerbd21/namespacelabel-operator/common/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
