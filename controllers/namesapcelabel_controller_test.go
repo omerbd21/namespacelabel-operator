@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"time"
 
 	"danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
 	"danaiodanaio/omerbd21/namespacelabel-operator/controllers"
@@ -110,6 +109,7 @@ var _ = Describe("NamespaceLabel controller", func() {
 
 		It("should successfully reconcile a custom resource for NamespaceLabel", func() {
 			By("Creating the custom resource for the Kind NamespaceLabel")
+
 			err := changeNamespaceLabelState(getNamespaceLabelForTest("basic"), ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, Create)
 			Expect(err).Should(BeNil())
 
@@ -147,6 +147,7 @@ var _ = Describe("NamespaceLabel controller", func() {
 		})
 		It("should successfully delete a custom resource for NamespaceLabel", func() {
 			By("Creating the custom resource for the Kind NamespaceLabel")
+
 			err := changeNamespaceLabelState(getNamespaceLabelForTest("basicUpdated"), ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, Create)
 			Expect(err).Should(BeNil())
 
@@ -282,17 +283,20 @@ var _ = Describe("NamespaceLabel controller", func() {
 		It("should return an error if there is no such namespace", func() {
 
 			By("Creating the custom resource for the Kind NamespaceLabel")
+
 			err := changeNamespaceLabelState(getNamespaceLabelForTest("basic"), ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, Create)
 			Expect(err).Should(BeNil())
 
 			By("Reconciling the custom resource created")
 			_, err = reconcileResource(*getNamespaceLabelReconciler(), ctx, fmt.Sprint(typeNamespaceName)+"a", typeNamespaceName.Namespace, false)
 			Expect(err).ShouldNot(BeNil())
+
 		})
 
 		It("should return an error if there is no such namespacelabel", func() {
 
 			By("Creating the custom resource for the Kind NamespaceLabel")
+
 			err := changeNamespaceLabelState(getNamespaceLabelForTest("basic"), ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, Create)
 			Expect(err).Should(BeNil())
 
