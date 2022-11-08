@@ -333,7 +333,7 @@ func reconcileResource(r controllers.NamespaceLabelReconciler, ctx context.Conte
 	return exists, err
 }
 
-//changeNamespaceLabelState gets a map of labels, the context, the name and namespace of the resource to be created/deleted and the action
+// changeNamespaceLabelState gets a map of labels, the context, the name and namespace of the resource to be created/deleted and the action
 // (whether to delete or create the resource). It returns an error.
 func changeNamespaceLabelState(labels map[string]string, ctx context.Context, name string, namespace string, action string) error {
 	namespaceLabel := &v1alpha1.NamespaceLabel{

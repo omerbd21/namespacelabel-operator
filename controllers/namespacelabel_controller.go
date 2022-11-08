@@ -21,7 +21,6 @@ import (
 	"errors"
 	"reflect"
 
-
 	danaiodanaiov1alpha1 "danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
 	utils "danaiodanaio/omerbd21/namespacelabel-operator/utils"
 
