@@ -261,26 +261,6 @@ var _ = Describe("NamespaceLabel controller", func() {
 			Expect(labels["label_2"] == "2021" && labels["label_3"] == "2011").Should(BeTrue())
 
 		})
-		It("should successfully protect the protected labels from being changed", func() {
-
-			By("Getting the previous labels existing on the namespace")
-			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
-			labels := namespace.GetLabels()
-
-			By("Creating the custom resource for the Kind NamespaceLabel")
-			err := changeNamespaceLabelState(getNamespaceLabelForTest("protectedLabels"), ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, Create)
-			Expect(err).Should(BeNil())
-
-			By("Reconciling the custom resource created")
-			_, err = reconcileResource(*getNamespaceLabelReconciler(), ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, true)
-			Expect(err).Should(BeNil())
-
-			By("Checking the previous labels exist")
-			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
-			newLabels := namespace.GetLabels()
-			Expect(reflect.DeepEqual(labels, newLabels)).Should(BeTrue())
-
-		})
 		It("should return an error if there is no such namespace", func() {
 
 			By("Creating the custom resource for the Kind NamespaceLabel")

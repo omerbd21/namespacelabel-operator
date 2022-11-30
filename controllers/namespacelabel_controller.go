@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 
 	danaiodanaiov1alpha1 "danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
 	utils "danaiodanaio/omerbd21/namespacelabel-operator/utils"
@@ -38,22 +39,17 @@ import (
 // AppLabel is a constant the saves the App Label prefix
 const AppLabel = "app.kubernetes.io/"
 
-// getProtectedLabels returns a slice of all "protected" (system-used/application-used) labels
-func getProtectedLabels() []string {
-	return []string{"kubernetes.io/metadata.name",
-		AppLabel + "name",
-		AppLabel + "instance",
-		AppLabel + "version",
-		AppLabel + "component",
-		AppLabel + "part-of",
-		AppLabel + "managed-by",
-	}
+// getProtectedPrefixes returns a slice of all "protected" (system-used/application-used) prefixes of labels
+func getProtectedPrefixes(Prefixes string) []string {
+	split := strings.Split(Prefixes, ",")
+	return split
 }
 
 // NamespaceLabelReconciler reconciles a NamespaceLabel object
 type NamespaceLabelReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	ProtectedPrefixes string
 }
 
 //+kubebuilder:rbac:groups=dana.io.dana.io,resources=namespacelabels,verbs=get;list;watch;create;update;patch;delete
@@ -68,7 +64,6 @@ type NamespaceLabelReconciler struct {
 func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logrus.New()
 	log.SetFormatter(&ecslogrus.Formatter{})
-
 	var namespaceLabel danaiodanaiov1alpha1.NamespaceLabel
 	if err := r.Get(ctx, req.NamespacedName, &namespaceLabel); err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -85,9 +80,9 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	labels := namespace.GetLabels()
-	protectedLabels := getProtectedLabels()
+	protectedPrefixes := getProtectedPrefixes(r.ProtectedPrefixes)
 	for key, val := range namespaceLabel.Spec.Labels {
-		if !utils.Contains(protectedLabels, key) {
+		if !utils.Contains(protectedPrefixes, strings.Split(key, "/")[0]) {
 			labels[key] = val
 		} // Checks if the label is protected before adding it to the namespace
 	}
