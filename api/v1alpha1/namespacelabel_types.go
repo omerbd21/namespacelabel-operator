@@ -29,6 +29,8 @@ type NamespaceLabelSpec struct {
 
 // NamespaceLabelStatus defines the observed state of NamespaceLabel
 type NamespaceLabelStatus struct {
+	EnforcedLabels []string           `json:"enforcedLabels,omitempty"`
+	Conditions     []metav1.Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true
