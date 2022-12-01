@@ -18,14 +18,13 @@ package controllers
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"strings"
 	"time"
-  
+
 	danaiodanaiov1alpha1 "danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
 	utils "danaiodanaio/omerbd21/namespacelabel-operator/utils"
 
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,7 +49,7 @@ func getProtectedPrefixes(Prefixes string) []string {
 // NamespaceLabelReconciler reconciles a NamespaceLabel object
 type NamespaceLabelReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme            *runtime.Scheme
 	ProtectedPrefixes string
 }
 
@@ -70,13 +69,13 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		if k8serrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
-		log.Info("Unable to fetch NamespaceLabel", zap.Error(err), zap.String("NamespaceLabel", req.NamespacedName.String()))
+		log.Error(err, "Unable to fetch NamespaceLabel", "namespaceLabel", req.NamespacedName.String())
 		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 	}
 
 	var namespace corev1.Namespace
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: namespaceLabel.ObjectMeta.Namespace}, &namespace); err != nil {
-		log.Info("Unable to fetch namespace", zap.Error(err), zap.String("namespace", namespaceLabel.ObjectMeta.Namespace))
+		log.Error(err, "Unable to fetch namespace", "namespace", namespaceLabel.ObjectMeta.Namespace)
 		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 	}
 	labels := namespace.GetLabels()
@@ -84,7 +83,7 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		if !controllerutil.ContainsFinalizer(&namespaceLabel, FinalizerName) {
 			controllerutil.AddFinalizer(&namespaceLabel, FinalizerName)
 			if err := r.Update(ctx, &namespaceLabel); err != nil {
-				log.Info("unable to add finalizer to namespacelabel", zap.Error(err), zap.String("namespacelabel", namespaceLabel.Name), zap.String("labels", fmt.Sprint(labels)))
+				log.Error(err, "unable to add finalizer to namespacelabel", "namespacelabel", namespaceLabel.Name, "labels", fmt.Sprint(labels))
 				return ctrl.Result{}, err
 			}
 		}
@@ -95,20 +94,20 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			}
 			namespace.SetLabels(labels)
 			if err := r.Client.Update(ctx, &namespace); err != nil {
-				log.Info("unable to fetch namespace while trying to update its labels post deletion", zap.Error(err), zap.String("namespace", namespace.Name))
+				log.Error(err, "unable to fetch namespace while trying to update its labels post deletion", "namespace", namespace.Name)
 				return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 			}
 			controllerutil.RemoveFinalizer(&namespaceLabel, FinalizerName)
 			if err := r.Update(ctx, &namespaceLabel); err != nil {
-				log.Info("unable to update namespacelabel in order to remove finalizer", zap.Error(err), zap.String("namespacelabel", namespaceLabel.Name))
+				log.Error(err, "unable to update namespacelabel in order to remove finalizer", "namespacelabel", namespaceLabel.Name)
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
 		}
 	}
-  	protectedPrefixes := getProtectedPrefixes(r.ProtectedPrefixes)
+	protectedPrefixes := getProtectedPrefixes(r.ProtectedPrefixes)
 	for key, val := range namespaceLabel.Spec.Labels {
-    _, exists := labels[key]
+		_, exists := labels[key]
 		if !utils.Contains(protectedPrefixes, strings.Split(key, "/")[0]) && !exists {
 			labels[key] = val
 			condition := metav1.Condition{Type: "LabelApplied", Status: "True", Reason: "Label Applied", Message: "Label" + key + " = " + val + "was applied", LastTransitionTime: metav1.Time{Time: time.Now()}}
@@ -120,11 +119,11 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			delete(namespaceLabel.Spec.Labels, key)
 		} // Checks if the label is protected before adding it to the namespace
 	}
-	log.WithFields(logrus.Fields{"labels": labels, "namespace": namespace.Name}).Info("labels were put on the namesapce")
+	log.Info("labels were put on the namespace", "namespacelabel", fmt.Sprint(namespaceLabel.Name), "labels", fmt.Sprint(labels))
 	namespace.SetLabels(labels)
 
 	if err := r.Client.Update(ctx, &namespace); err != nil {
-		log.WithError(errors.New(err.Error())).WithFields(logrus.Fields{"namespace": namespace.Name, "labels": labels}).Error("unable to fetch namespace while updating new labels")
+		log.Error(err, "unable to fetch namespace while updating new labels", "namespace", namespace.Name, "labels", fmt.Sprint(labels))
 		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 	}
 

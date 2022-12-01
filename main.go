@@ -22,13 +22,15 @@ import (
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/go-logr/zapr"
+	ecszap "go.elastic.co/ecszap"
+	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	danaiodanaiov1alpha1 "danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
 	"danaiodanaio/omerbd21/namespacelabel-operator/controllers"
@@ -41,7 +43,6 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
 	utilruntime.Must(danaiodanaiov1alpha1.AddToScheme(scheme))
 }
 
@@ -56,14 +57,12 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&protectedPrefixes, "protected-Preixes", "", "All the protected label Prefixes you wish to block.")
-	opts := zap.Options{
-		Development: true,
-	}
-	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	log := zap.New(zap.UseFlagOptions(&opts))
-	logf.SetLogger(log)
+	encoderConfig := ecszap.NewDefaultEncoderConfig()
+	core := ecszap.NewCore(encoderConfig, os.Stdout, zap.DebugLevel)
+	log := zap.New(core, zap.AddCaller())
+	logf.SetLogger(zapr.NewLogger(log))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -74,32 +73,32 @@ func main() {
 		LeaderElectionID:       "717a25f7.dana.io.dana.io",
 	})
 	if err != nil {
-		log.Error(err, "unable to start manager")
+		log.Error("unable to start manager", zap.Error(err))
 		os.Exit(1)
 	}
 
 	if err = (&controllers.NamespaceLabelReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
 		ProtectedPrefixes: protectedPrefixes,
 	}).SetupWithManager(mgr); err != nil {
-		log.Error(err, "unable to create controller")
+		log.Error("unable to create controller", zap.Error(err))
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		log.Error(err, "unable to set up health check")
+		log.Error("unable to set up health check", zap.Error(err))
 		os.Exit(1)
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		log.Error(err, "unable to set up ready check")
+		log.Error("unable to set up ready check", zap.Error(err))
 		os.Exit(1)
 	}
 
 	log.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		log.Error(err, "problem running manager")
+		log.Error("problem running manager", zap.Error(err))
 		os.Exit(1)
 	}
 }

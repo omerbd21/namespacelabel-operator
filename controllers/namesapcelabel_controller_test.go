@@ -17,7 +17,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
 
 	"danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
