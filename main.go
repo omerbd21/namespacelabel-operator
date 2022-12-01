@@ -17,11 +17,9 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"flag"
 	"os"
 
-	"go.elastic.co/ecslogrus"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,11 +27,11 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	danaiodanaiov1alpha1 "danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
 	"danaiodanaio/omerbd21/namespacelabel-operator/controllers"
-	"github.com/sirupsen/logrus"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -64,8 +62,8 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	log := logrus.New()
-	log.SetFormatter(&ecslogrus.Formatter{})
+	log := zap.New(zap.UseFlagOptions(&opts))
+	logf.SetLogger(log)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -76,7 +74,7 @@ func main() {
 		LeaderElectionID:       "717a25f7.dana.io.dana.io",
 	})
 	if err != nil {
-		log.WithError(errors.New(err.Error())).Error("unable to start manager")
+		log.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
@@ -85,23 +83,23 @@ func main() {
 		Scheme: mgr.GetScheme(),
 		ProtectedPrefixes: protectedPrefixes,
 	}).SetupWithManager(mgr); err != nil {
-		log.WithError(errors.New(err.Error())).Error("unable to create controller")
+		log.Error(err, "unable to create controller")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		log.WithError(errors.New(err.Error())).Error("unable to set up health check")
+		log.Error(err, "unable to set up health check")
 		os.Exit(1)
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		log.WithError(errors.New(err.Error())).Error("unable to set up ready check")
+		log.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
 
 	log.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		log.WithError(errors.New(err.Error())).Error("problem running manager")
+		log.Error(err, "problem running manager")
 		os.Exit(1)
 	}
 }

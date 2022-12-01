@@ -21,12 +21,11 @@ import (
 	"errors"
 	"strings"
 	"time"
-
+  
 	danaiodanaiov1alpha1 "danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
 	utils "danaiodanaio/omerbd21/namespacelabel-operator/utils"
 
-	"github.com/sirupsen/logrus"
-	"go.elastic.co/ecslogrus"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,6 +34,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // AppLabel is a constant the saves the App Label prefix
@@ -64,29 +64,27 @@ type NamespaceLabelReconciler struct {
 // This reconcile function adds the labels from the NamespaceLabel to the namespace it runs against,
 // and deletes the labels when the resource is deleted.
 func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := logrus.New()
-	log.SetFormatter(&ecslogrus.Formatter{})
+	log := ctrllog.FromContext(ctx)
 	var namespaceLabel danaiodanaiov1alpha1.NamespaceLabel
 	if err := r.Get(ctx, req.NamespacedName, &namespaceLabel); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
-		log.WithError(errors.New(err.Error())).WithFields(logrus.Fields{"NamespaceLabel": req.NamespacedName}).Error("unable to fetch NamespaceLabel")
+		log.Info("Unable to fetch NamespaceLabel", zap.Error(err), zap.String("NamespaceLabel", req.NamespacedName.String()))
 		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 	}
 
 	var namespace corev1.Namespace
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: namespaceLabel.ObjectMeta.Namespace}, &namespace); err != nil {
-		log.WithError(errors.New(err.Error())).WithFields(logrus.Fields{"namespace": namespaceLabel.ObjectMeta.Namespace}).Error("unable to fetch namespace while getting previous labels")
+		log.Info("Unable to fetch namespace", zap.Error(err), zap.String("namespace", namespaceLabel.ObjectMeta.Namespace))
 		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 	}
 	labels := namespace.GetLabels()
-
 	if namespaceLabel.ObjectMeta.DeletionTimestamp.IsZero() {
 		if !controllerutil.ContainsFinalizer(&namespaceLabel, FinalizerName) {
 			controllerutil.AddFinalizer(&namespaceLabel, FinalizerName)
 			if err := r.Update(ctx, &namespaceLabel); err != nil {
-				log.WithError(errors.New(err.Error())).WithFields(logrus.Fields{"namespacelabel": namespaceLabel.Name}).Error("unable to add finalizer to namespacelabel")
+				log.Info("unable to add finalizer to namespacelabel", zap.Error(err), zap.String("namespacelabel", namespaceLabel.Name), zap.String("labels", fmt.Sprint(labels)))
 				return ctrl.Result{}, err
 			}
 		}
@@ -97,12 +95,12 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			}
 			namespace.SetLabels(labels)
 			if err := r.Client.Update(ctx, &namespace); err != nil {
-				log.WithError(errors.New(err.Error())).WithFields(logrus.Fields{"namespace": namespace.Name}).Error("unable to fetch namespace while trying to update its labels post deletion")
+				log.Info("unable to fetch namespace while trying to update its labels post deletion", zap.Error(err), zap.String("namespace", namespace.Name))
 				return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 			}
 			controllerutil.RemoveFinalizer(&namespaceLabel, FinalizerName)
 			if err := r.Update(ctx, &namespaceLabel); err != nil {
-				log.WithError(errors.New(err.Error())).WithFields(logrus.Fields{"namespacelabel": namespaceLabel.Name}).Error("unable to update namespacelabel in order to remove finalizer")
+				log.Info("unable to update namespacelabel in order to remove finalizer", zap.Error(err), zap.String("namespacelabel", namespaceLabel.Name))
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
