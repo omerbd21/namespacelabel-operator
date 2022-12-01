@@ -48,7 +48,7 @@ type NamespaceLabel struct {
 
 //+kubebuilder:object:root=true
 
-// NamespaceLabelList contains a list of NamespaceLabel
+// NamespaceLabelList contains a list of NamespaceLabels
 type NamespaceLabelList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
