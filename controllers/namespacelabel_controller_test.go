@@ -38,15 +38,16 @@ const interval = time.Millisecond * 250
 
 // Enum-like consts for the changeNamespaceLabelState function
 const (
-	Create string = "create"
-	Delete        = "delete"
+	Create = "create"
+	Delete = "delete"
 )
 
 // Returns the basic namespaceLabelReconciler
 func getNamespaceLabelReconciler() *controllers.NamespaceLabelReconciler {
 	namespaceLabelReconciler := &controllers.NamespaceLabelReconciler{
-		Client: k8sClient,
-		Scheme: k8sClient.Scheme(),
+		Client:            k8sClient,
+		Scheme:            k8sClient.Scheme(),
+		ProtectedPrefixes: "app.kubernetes.io,",
 	}
 	return namespaceLabelReconciler
 }
@@ -64,13 +65,6 @@ func getNamespaceLabelForTest(labelType string) map[string]string {
 			"label_3": "2006",
 			"label_4": "2005",
 		},
-		"protectedLabels": {"kubernetes.io/metadata.name": "name",
-			controllers.AppLabel + "name":       "name",
-			controllers.AppLabel + "instance":   "instance",
-			controllers.AppLabel + "version":    "version",
-			controllers.AppLabel + "component":  "component",
-			controllers.AppLabel + "part-of":    "part-of",
-			controllers.AppLabel + "managed-by": "managed-by"},
 	}
 	return namespaceLabels[labelType]
 }
@@ -145,6 +139,10 @@ var _ = Describe("NamespaceLabel controller", func() {
 			By("Creating the custom resource for the Kind NamespaceLabel")
 
 			err := changeNamespaceLabelState(getNamespaceLabelForTest("basicUpdated"), ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, Create)
+			Expect(err).Should(BeNil())
+
+			By("Reconciling the custom resource deleted")
+			_, err = reconcileResource(*getNamespaceLabelReconciler(), ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, true)
 			Expect(err).Should(BeNil())
 
 			By("Deleting the custom resource for the Kind NamespaceLabel")
@@ -234,10 +232,8 @@ func reconcileResource(r controllers.NamespaceLabelReconciler, ctx context.Conte
 	exists := Eventually(func() bool {
 		var namespaceLabel v1alpha1.NamespaceLabel
 		err := k8sClient.Get(ctx, namespacedName, &namespaceLabel)
-		if err != nil {
-			return false
-		}
-		return true
+		GinkgoWriter.Println(namespaceLabel.Spec)
+		return err == nil
 	}, timeout, interval).Should(be)
 	return exists, err
 }
