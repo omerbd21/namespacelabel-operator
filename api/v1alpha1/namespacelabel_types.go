@@ -29,6 +29,8 @@ type NamespaceLabelSpec struct {
 
 // NamespaceLabelStatus defines the observed state of NamespaceLabel
 type NamespaceLabelStatus struct {
+	EnforcedLabels []string           `json:"enforcedLabels,omitempty"`
+	Conditions     []metav1.Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -46,7 +48,7 @@ type NamespaceLabel struct {
 
 //+kubebuilder:object:root=true
 
-// NamespaceLabelList contains a list of NamespaceLabel
+// NamespaceLabelList contains a list of NamespaceLabels
 type NamespaceLabelList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
