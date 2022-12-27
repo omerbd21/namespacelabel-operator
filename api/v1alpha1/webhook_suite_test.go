@@ -30,7 +30,11 @@ import (
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	//+kubebuilder:scaffold:imports
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -79,6 +83,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	err = admissionv1beta1.AddToScheme(scheme)
+	Expect(err).NotTo(HaveOccurred())
+	err = corev1.AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme
@@ -129,4 +135,66 @@ var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
+})
+
+var _ = Describe("NamespaceLabel controller webhook", func() {
+	Context("NamespaceLabel controller webhook test", func() {
+
+		const NamespaceLabelName = "test-namespacelabel"
+
+		ctx := context.Background()
+		testCounter := 0
+		typeNamespaceName := types.NamespacedName{}
+		namespace := &corev1.Namespace{}
+		BeforeEach(func() {
+			testCounter++
+			// Each test case gets its own namespace
+			namespace = &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: NamespaceLabelName + fmt.Sprint(testCounter),
+				},
+			}
+			err := k8sClient.Create(ctx, namespace)
+			Expect(err).To(Not(HaveOccurred()))
+			typeNamespaceName = types.NamespacedName{Name: NamespaceLabelName + fmt.Sprint(testCounter),
+				Namespace: NamespaceLabelName + fmt.Sprint(testCounter)}
+		})
+
+		AfterEach(func() {
+			err := k8sClient.Delete(ctx, namespace)
+			Expect(err).To(Not(HaveOccurred()))
+		})
+
+		It("should create the namespacelabel", func() {
+			namespaceLabel := &NamespaceLabel{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      typeNamespaceName.Name,
+					Namespace: typeNamespaceName.Namespace,
+				},
+				Spec: NamespaceLabelSpec{
+					Labels: map[string]string{
+						"label_1": "1",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, namespaceLabel)).Should(Succeed())
+
+		})
+		It("should block if a namespace is not in the same name as namespace", func() {
+			namespaceLabel := &NamespaceLabel{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      typeNamespaceName.Name + "changed",
+					Namespace: typeNamespaceName.Namespace,
+				},
+				Spec: NamespaceLabelSpec{
+					Labels: map[string]string{
+						"label_1": "1",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, namespaceLabel)).ShouldNot(Succeed())
+
+		})
+
+	})
 })

@@ -26,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-// log is for logging in this package.
 var namespacelabellog = logf.Log.WithName("namespacelabel-resource")
 
 func (r *NamespaceLabel) SetupWebhookWithManager(mgr ctrl.Manager) error {
@@ -36,8 +35,6 @@ func (r *NamespaceLabel) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *NamespaceLabel) validateNamespaceLabelName() *field.Error {
-	// The field helpers from the kubernetes API machinery help us return nicely
-	// structured validation errors.
 	if r.Name != r.Namespace {
 		return field.Invalid(field.NewPath("name"), r.Name, "The name you put is invalid; you have to put the name of the namespace")
 	}
@@ -54,9 +51,6 @@ func (r *NamespaceLabel) validateNamespaceLabel() error {
 
 }
 
-// TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-
-// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 //+kubebuilder:webhook:path=/validate-dana-io-dana-io-v1alpha1-namespacelabel,mutating=false,failurePolicy=fail,sideEffects=None,groups=dana.io.dana.io,resources=namespacelabels,verbs=create;update,versions=v1alpha1,name=vnamespacelabel.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Validator = &NamespaceLabel{}
@@ -64,23 +58,17 @@ var _ webhook.Validator = &NamespaceLabel{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *NamespaceLabel) ValidateCreate() error {
 	namespacelabellog.Info("validate create", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object creation.
 	return r.validateNamespaceLabel()
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *NamespaceLabel) ValidateUpdate(old runtime.Object) error {
 	namespacelabellog.Info("validate update", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object update.
 	return r.validateNamespaceLabel()
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *NamespaceLabel) ValidateDelete() error {
 	namespacelabellog.Info("validate delete", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object deletion.
 	return nil
 }
