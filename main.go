@@ -39,6 +39,7 @@ import (
 
 var (
 	scheme = runtime.NewScheme()
+	nllog  = logf.Log.WithName("namespacelabel-resource")
 )
 
 func init() {
@@ -83,6 +84,10 @@ func main() {
 		ProtectedPrefixes: protectedPrefixes,
 	}).SetupWithManager(mgr); err != nil {
 		log.Error("unable to create controller", zap.Error(err))
+		os.Exit(1)
+	}
+	if err = (&danaiodanaiov1alpha1.NamespaceLabel{}).SetupWebhookWithManager(mgr); err != nil {
+		nllog.Error(err, "unable to create webhook", "webhook", "NamespaceLabel")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
