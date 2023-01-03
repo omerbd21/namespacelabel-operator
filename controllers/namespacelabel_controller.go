@@ -28,6 +28,7 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -79,18 +80,17 @@ func (r *NamespaceLabelReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		log.Error(err, "Unable to fetch namespace", "namespace", namespaceLabel.ObjectMeta.Namespace)
 		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 	}
-	if namespaceLabel.ObjectMeta.DeletionTimestamp.IsZero() {
-		if !controllerutil.ContainsFinalizer(&namespaceLabel, FinalizerName) {
-			if err := r.addFinalizer(ctx, log, &namespaceLabel, &namespace); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-	} else {
+	if !namespaceLabel.ObjectMeta.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(&namespaceLabel, FinalizerName) {
 			if res, err := r.deleteLabels(ctx, log, &namespaceLabel, &namespace); err != nil {
 				return res, err
 			}
 			return ctrl.Result{}, nil
+		}
+	}
+	if !controllerutil.ContainsFinalizer(&namespaceLabel, FinalizerName) {
+		if err := r.addFinalizer(ctx, log, &namespaceLabel, &namespace); err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 	if err := r.updateLabels(ctx, log, &namespaceLabel, &namespace); err != nil {
@@ -107,26 +107,25 @@ func (r *NamespaceLabelReconciler) updateLabels(ctx context.Context, log logr.Lo
 		if !utils.Contains(protectedPrefixes, strings.Split(key, "/")[0]) && !exists {
 			labels[key] = val
 			condition := metav1.Condition{Type: "LabelApplied", Status: "True", Reason: "LabelApplied", Message: "Label " + key + " = " + val + " was applied", LastTransitionTime: metav1.Time{Time: time.Now()}}
-			namespaceLabel.Status.Conditions = append(namespaceLabel.Status.Conditions, condition)
+			meta.SetStatusCondition(&namespaceLabel.Status.Conditions, condition)
 			if !utils.Contains(namespaceLabel.Status.EnforcedLabels, key) {
 				namespaceLabel.Status.EnforcedLabels = append(namespaceLabel.Status.EnforcedLabels, key)
 			}
 		} else if exists && !utils.Contains(namespaceLabel.Status.EnforcedLabels, key) {
 			condition := metav1.Condition{Type: "LabelApplied", Status: "False", Reason: "LabelNotApplied", Message: "Label was not applied because a label with the same name was applied earlier", LastTransitionTime: metav1.Time{Time: time.Now()}}
-			namespaceLabel.Status.Conditions = append(namespaceLabel.Status.Conditions, condition)
-			delete(namespaceLabel.Spec.Labels, key)
+			meta.SetStatusCondition(&namespaceLabel.Status.Conditions, condition)
 		} // Checks if the label is protected before adding it to the namespace
 	}
 	if err := r.Client.Status().Update(ctx, namespaceLabel); err != nil {
 		log.Error(err, "unable to update namespacelabel status", "namespacelabel", namespaceLabel.Name)
 		return client.IgnoreNotFound(err)
 	}
-	log.Info("labels were put on the namespace", "namespacelabel", fmt.Sprint(namespaceLabel.Name), "labels", fmt.Sprint(labels))
 	namespace.SetLabels(labels)
 	if err := r.Client.Update(ctx, namespace); err != nil {
 		log.Error(err, "unable to fetch namespace while updating new labels", "namespace", namespace.Name, "labels", fmt.Sprint(labels))
 		return client.IgnoreNotFound(err)
 	}
+	log.Info("labels were put on the namespace", "namespacelabel", fmt.Sprint(namespaceLabel.Name), "labels", fmt.Sprint(labels))
 	return nil
 }
 
