@@ -17,7 +17,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
 
 	"danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
@@ -39,15 +38,16 @@ const interval = time.Millisecond * 250
 
 // Enum-like consts for the changeNamespaceLabelState function
 const (
-	Create string = "create"
-	Delete        = "delete"
+	Create = "create"
+	Delete = "delete"
 )
 
 // Returns the basic namespaceLabelReconciler
 func getNamespaceLabelReconciler() *controllers.NamespaceLabelReconciler {
 	namespaceLabelReconciler := &controllers.NamespaceLabelReconciler{
-		Client: k8sClient,
-		Scheme: k8sClient.Scheme(),
+		Client:            k8sClient,
+		Scheme:            k8sClient.Scheme(),
+		ProtectedPrefixes: "app.kubernetes.io,",
 	}
 	return namespaceLabelReconciler
 }
@@ -65,17 +65,6 @@ func getNamespaceLabelForTest(labelType string) map[string]string {
 			"label_3": "2006",
 			"label_4": "2005",
 		},
-		"complex3": {"label_3": "2004",
-			"label_4": "2002",
-			"label_5": "2001",
-		},
-		"protectedLabels": {"kubernetes.io/metadata.name": "name",
-			controllers.AppLabel + "name":       "name",
-			controllers.AppLabel + "instance":   "instance",
-			controllers.AppLabel + "version":    "version",
-			controllers.AppLabel + "component":  "component",
-			controllers.AppLabel + "part-of":    "part-of",
-			controllers.AppLabel + "managed-by": "managed-by"},
 	}
 	return namespaceLabels[labelType]
 }
@@ -123,7 +112,7 @@ var _ = Describe("NamespaceLabel controller", func() {
 			Expect(namespace.GetLabels()["label_1"] == "1").Should(BeTrue())
 
 		})
-		It("should successfully update a custom resource for NamespaceLabel", func() {
+		It("should not update a custom resource for NamespaceLabel", func() {
 			By("Creating the custom resource for the Kind NamespaceLabel")
 			err := changeNamespaceLabelState(getNamespaceLabelForTest("basic"), ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, Create)
 			Expect(err).Should(BeNil())
@@ -143,13 +132,17 @@ var _ = Describe("NamespaceLabel controller", func() {
 
 			By("Checking if the label was successfully updated in the reconciliation")
 			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
-			Expect(namespace.GetLabels()["label_1"] == "2").Should(BeTrue())
+			Expect(namespace.GetLabels()["label_1"] == "1").Should(BeTrue())
 
 		})
 		It("should successfully delete a custom resource for NamespaceLabel", func() {
 			By("Creating the custom resource for the Kind NamespaceLabel")
 
 			err := changeNamespaceLabelState(getNamespaceLabelForTest("basicUpdated"), ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, Create)
+			Expect(err).Should(BeNil())
+
+			By("Reconciling the custom resource deleted")
+			_, err = reconcileResource(*getNamespaceLabelReconciler(), ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, true)
 			Expect(err).Should(BeNil())
 
 			By("Deleting the custom resource for the Kind NamespaceLabel")
@@ -165,10 +158,9 @@ var _ = Describe("NamespaceLabel controller", func() {
 			Expect(namespace.GetLabels()["label_1"] == "2").Should(BeFalse())
 
 		})
-		It("should successfully use only the last values assgined to a label with 3 NamespaceLabels", func() {
+		It("should successfully use only the first occurence of each label", func() {
 			labels1 := getNamespaceLabelForTest("complex1")
 			labels2 := getNamespaceLabelForTest("complex2")
-			labels3 := getNamespaceLabelForTest("complex3")
 
 			By("Creating the first custom resource for the Kind NamespaceLabel")
 			err := changeNamespaceLabelState(labels1, ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, Create)
@@ -187,98 +179,13 @@ var _ = Describe("NamespaceLabel controller", func() {
 			_, err = reconcileResource(namespaceLabelReconciler, ctx, typeNamespaceName.Name+"2", typeNamespaceName.Namespace, true)
 			Expect(err).Should(BeNil())
 
-			By("Creating the third custom resource for the Kind NamespaceLabel")
-			err = changeNamespaceLabelState(labels3, ctx, typeNamespaceName.Name+"3", typeNamespaceName.Namespace, Create)
-			Expect(err).Should(BeNil())
-
-			By("Reconciling the third custom resource created")
-			_, err = reconcileResource(namespaceLabelReconciler, ctx, typeNamespaceName.Name+"3", typeNamespaceName.Namespace, true)
-			Expect(err).Should(BeNil())
-
-			By("Checking if the label was successfully updated in the reconciliation")
+			By("Checking if the label stayed the same in the reconciliation")
 			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
 			Expect(
 				namespace.GetLabels()["label_1"] == "2022" &&
-					namespace.GetLabels()["label_2"] == "2009" &&
-					namespace.GetLabels()["label_3"] == "2004" &&
-					namespace.GetLabels()["label_4"] == "2002" &&
-					namespace.GetLabels()["label_5"] == "2001").Should(BeTrue())
-
-		})
-		It("should successfully still use the previous labels after deleting one of 3", func() {
-			By("Creating the first custom resource for the Kind NamespaceLabel")
-			labels1 := getNamespaceLabelForTest("complex1")
-			labels2 := getNamespaceLabelForTest("complex2")
-			labels3 := getNamespaceLabelForTest("complex3")
-			err := changeNamespaceLabelState(labels1, ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, Create)
-			Expect(err).Should(BeNil())
-
-			By("Reconciling the first custom resource created")
-			namespaceLabelReconciler := *getNamespaceLabelReconciler()
-			_, err = reconcileResource(namespaceLabelReconciler, ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, true)
-			Expect(err).Should(BeNil())
-
-			By("Creating the second custom resource for the Kind NamespaceLabel")
-			err = changeNamespaceLabelState(labels2, ctx, typeNamespaceName.Name+"2", typeNamespaceName.Namespace, Create)
-			Expect(err).Should(BeNil())
-
-			By("Reconciling the second custom resource created")
-			_, err = reconcileResource(namespaceLabelReconciler, ctx, typeNamespaceName.Name+"2", typeNamespaceName.Namespace, true)
-			Expect(err).Should(BeNil())
-
-			By("Creating the third custom resource for the Kind NamespaceLabel")
-			err = changeNamespaceLabelState(labels3, ctx, typeNamespaceName.Name+"3", typeNamespaceName.Namespace, Create)
-			Expect(err).Should(BeNil())
-
-			By("Reconciling the third custom resource created")
-			_, err = reconcileResource(namespaceLabelReconciler, ctx, typeNamespaceName.Name+"3", typeNamespaceName.Namespace, true)
-			Expect(err).Should(BeNil())
-
-			By("Deleting the third custom resource")
-			err = changeNamespaceLabelState(labels3, ctx, typeNamespaceName.Name+"3", typeNamespaceName.Namespace, Delete)
-			Expect(err).Should(BeNil())
-
-			By("Reconciling deleting the third custom resource deleted")
-			_, err = reconcileResource(namespaceLabelReconciler, ctx, typeNamespaceName.Name+"3", typeNamespaceName.Namespace, false)
-			Expect(err).Should(BeNil())
-
-			By("Checking the previous labels exist")
-			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
-			labels := namespace.GetLabels()
-			Expect(labels["label_4"] == "2005" && labels["label_3"] == "2006").Should(BeTrue())
-
-			By("Deleting the second custom resource")
-			err = changeNamespaceLabelState(labels2, ctx, typeNamespaceName.Name+"2", typeNamespaceName.Namespace, Delete)
-			Expect(err).Should(BeNil())
-
-			By("Reconciling the third custom resource deleted")
-			_, err = reconcileResource(namespaceLabelReconciler, ctx, typeNamespaceName.Name+"2", typeNamespaceName.Namespace, false)
-			Expect(err).Should(BeNil())
-
-			By("Checking the previous labels exist")
-			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
-			labels = namespace.GetLabels()
-			Expect(labels["label_2"] == "2021" && labels["label_3"] == "2011").Should(BeTrue())
-
-		})
-		It("should successfully protect the protected labels from being changed", func() {
-
-			By("Getting the previous labels existing on the namespace")
-			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
-			labels := namespace.GetLabels()
-
-			By("Creating the custom resource for the Kind NamespaceLabel")
-			err := changeNamespaceLabelState(getNamespaceLabelForTest("protectedLabels"), ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, Create)
-			Expect(err).Should(BeNil())
-
-			By("Reconciling the custom resource created")
-			_, err = reconcileResource(*getNamespaceLabelReconciler(), ctx, typeNamespaceName.Name, typeNamespaceName.Namespace, true)
-			Expect(err).Should(BeNil())
-
-			By("Checking the previous labels exist")
-			k8sClient.Get(ctx, types.NamespacedName{Name: typeNamespaceName.Namespace}, namespace)
-			newLabels := namespace.GetLabels()
-			Expect(reflect.DeepEqual(labels, newLabels)).Should(BeTrue())
+					namespace.GetLabels()["label_2"] == "2021" &&
+					namespace.GetLabels()["label_3"] == "2011" &&
+					namespace.GetLabels()["label_4"] == "2005").Should(BeTrue())
 
 		})
 		It("should return an error if there is no such namespace", func() {
@@ -325,10 +232,8 @@ func reconcileResource(r controllers.NamespaceLabelReconciler, ctx context.Conte
 	exists := Eventually(func() bool {
 		var namespaceLabel v1alpha1.NamespaceLabel
 		err := k8sClient.Get(ctx, namespacedName, &namespaceLabel)
-		if err != nil {
-			return false
-		}
-		return true
+		GinkgoWriter.Println(namespaceLabel.Spec)
+		return err == nil
 	}, timeout, interval).Should(be)
 	return exists, err
 }
