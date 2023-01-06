@@ -20,7 +20,9 @@ import (
 	"flag"
 	"os"
 
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	danaiodanaiov1alpha1 "danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
+	"danaiodanaio/omerbd21/namespacelabel-operator/controllers"
+	"danaiodanaio/omerbd21/namespacelabel-operator/internal"
 
 	"github.com/go-logr/zapr"
 	ecszap "go.elastic.co/ecszap"
@@ -28,12 +30,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	danaiodanaiov1alpha1 "danaiodanaio/omerbd21/namespacelabel-operator/api/v1alpha1"
-	"danaiodanaio/omerbd21/namespacelabel-operator/controllers"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -96,6 +98,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	log.Info("setting up webhook server")
+	hookServer := mgr.GetWebhookServer()
+	decoder, _ := admission.NewDecoder(scheme)
+	log.Info("Registering webhooks to the webhook server")
+	hookServer.Register("/validate-v1-namespacelabel",
+		&webhook.Admission{Handler: &webhook.Admission{
+			Handler: &internal.NamespaceLabelValidator{
+				Client:  mgr.GetClient(),
+				Decoder: decoder,
+			}}})
 	log.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		log.Error("problem running manager", zap.Error(err))
